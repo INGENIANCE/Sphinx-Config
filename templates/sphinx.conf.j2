@@ -1,0 +1,2775 @@
+# {{ ansible_managed }}
+#
+# Source used as base for this template : https://github.com/sphinxsearch/sphinx/blob/master/sphinx.conf.in
+#
+# Sphinx configuration template
+#
+# WARNING! While this template mentions all available options,
+# it contains (very) short helper descriptions only. Please refer to
+# http://sphinxsearch.com/docs/current.html for details.
+#
+
+{% if (sources is defined) and sources -%}
+#############################################################################
+## data source definition
+#############################################################################
+
+{% for source in sources -%}
+{% if source.name is defined -%}
+source {{ source.name }}
+{
+    {% if source.type is defined -%}
+    # data source type. mandatory, no default value
+    # known types are mysql, pgsql, mssql, xmlpipe2, tsvpipe, csvpipe and odbc
+    type			= {{ source.type }}
+    {% endif %}
+
+    {% if (source.type == 'mysql') or (source.type == 'pgsql') or (source.type == 'mssql') or (source.parent is defined) -%}
+    #####################################################################
+    ## SQL settings (for 'mysql', 'pgsql' and 'mssql' types)
+    #####################################################################
+    {% if (source.sql_host is defined) or
+          (source.sql_user is defined) or
+          (source.sql_pass is defined) or
+          (source.sql_db is defined) or
+          (source.sql_port is defined) -%}
+    # some straightforward parameters for SQL source types
+    {% endif -%}
+    {% if source.sql_host is defined -%}
+    sql_host		= {{ source.sql_host }}
+    {% endif -%}
+    {% if source.sql_user is defined -%}
+    sql_user		= {{ source.sql_user }}
+    {% endif -%}
+    {% if source.sql_pass is defined -%}
+    sql_pass		= {{ source.sql_pass }}
+    {% endif -%}
+    {% if source.sql_db is defined -%}
+    sql_db			= {{ source.sql_db }}
+    {% endif -%}
+    {% if source.sql_port is defined -%}
+    sql_port		= {{ source.sql_port }}	# optional, default is 3306
+    {% endif %}
+
+    {% if source.sql_sock is defined -%}
+    # UNIX socket name
+    # optional, default is empty (reuse client library defaults)
+    # usually '/var/lib/mysql/mysql.sock' on Linux
+    # usually '/tmp/mysql.sock' on FreeBSD
+    sql_sock		= {{ source.sql_sock }}
+    {% endif %}
+
+    {% if source.sql_query_pre is defined -%}
+    # pre-query, executed before the main fetch query
+    # multi-value, optional, default is empty list of queries
+    {% for sql_query_pre in source.sql_query_pre -%}
+    sql_query_pre		= {{ sql_query_pre }}
+    {% endfor -%}
+    {% endif %}
+
+    {% if source.sql_query is defined -%}
+    # main document fetch query
+    # mandatory, integer document ID field MUST be the first selected column
+    sql_query		= {{ source.sql_query }}
+    {% endif %}
+
+    {% if source.sql_joined_field is defined -%}
+    # joined/payload field fetch query
+    # joined fields let you avoid (slow) JOIN and GROUP_CONCAT
+    # payload fields let you attach custom per-keyword values (eg. for ranking)
+    #
+    # syntax is FIELD-NAME 'from'  ( 'query' | 'payload-query' ); QUERY
+    # joined field QUERY should return 2 columns (docid, text)
+    # payload field QUERY should return 3 columns (docid, keyword, weight)
+    #
+    # REQUIRES that query results are in ascending document ID order!
+    # multi-value, optional, default is empty list of queries
+    #
+    {% for sql_joined_field in source.sql_joined_field -%}
+    sql_joined_field	= {{ sql_joined_field }}
+    {% endfor -%}
+    {% endif %}
+
+    {% if source.sql_query_range is defined -%}
+    # range query setup, query that must return min and max ID values
+    # optional, default is empty
+    #
+    # sql_query will need to reference $start and $end boundaries
+    # if using ranged query:
+    #
+    # sql_query		= \
+    #	SELECT doc.id, doc.id AS group, doc.title, doc.data \
+    #	FROM documents doc \
+    #	WHERE id>=$start AND id<=$end
+    #
+    sql_query_range		= {{ source.sql_query_range }}
+    {% endif %}
+
+    {% if source.sql_range_step is defined -%}
+    # range query step
+    # optional, default is 1024
+    #
+    sql_range_step		= {{ source.sql_range_step }}
+    {% endif %}
+
+    {% if source.sql_query_killlist is defined -%}
+    # kill-list query, fetches the document IDs for kill-list
+    # k-list will suppress matches from preceding indexes in the same query
+    # optional, default is empty
+    #
+    sql_query_killlist	= {{ source.sql_query_killlist }}
+    {% endif %}
+
+    {% if source.sql_attr_uint is defined -%}
+    # unsigned integer attribute declaration
+    # multi-value (an arbitrary number of attributes is allowed), optional
+    # optional bit size can be specified, default is 32
+    #
+    # sql_attr_uint		= author_id
+    # sql_attr_uint		= forum_id:9 # 9 bits for forum_id
+    {% for sql_attr_uint in source.sql_attr_uint -%}
+    sql_attr_uint		= {{ sql_attr_uint }}
+    {% endfor -%}
+    {% endif %}
+
+    {% if source.sql_attr_bool is defined -%}
+    # boolean attribute declaration
+    # multi-value (an arbitrary number of attributes is allowed), optional
+    # equivalent to sql_attr_uint with 1-bit size
+    #
+    {% for sql_attr_bool in source.sql_attr_bool -%}
+    sql_attr_bool		= {{ sql_attr_bool }}
+    {% endfor -%}
+    {% endif %}
+
+    {% if source.sql_attr_bigint is defined -%}
+    # bigint attribute declaration
+    # multi-value (an arbitrary number of attributes is allowed), optional
+    # declares a signed (unlike uint!) 64-bit attribute
+    #
+    {% for sql_attr_bigint in source.sql_attr_bigint -%}
+    sql_attr_bigint		= {{ sql_attr_bigint }}
+    {% endfor -%}
+    {% endif %}
+
+    {% if source.sql_attr_timestamp is defined -%}
+    # UNIX timestamp attribute declaration
+    # multi-value (an arbitrary number of attributes is allowed), optional
+    # similar to integer, but can also be used in date functions
+    #
+    {% for sql_attr_timestamp in source.sql_attr_timestamp -%}
+    sql_attr_timestamp	= {{ sql_attr_timestamp }}
+    {% endfor -%}
+    {% endif %}
+
+    {% if source.sql_attr_float is defined -%}
+    # floating point attribute declaration
+    # multi-value (an arbitrary number of attributes is allowed), optional
+    # values are stored in single precision, 32-bit IEEE 754 format
+    #
+    {% for sql_attr_float in source.sql_attr_float -%}
+    sql_attr_float		= {{ sql_attr_float }}
+    {% endfor -%}
+    {% endif %}
+
+    {% if source.sql_attr_multi is defined -%}
+    # multi-valued attribute (MVA) attribute declaration
+    # multi-value (an arbitrary number of attributes is allowed), optional
+    # MVA values are variable length lists of unsigned 32-bit integers
+    #
+    # syntax is ATTR-TYPE ATTR-NAME 'from' SOURCE-TYPE [;QUERY] [;RANGE-QUERY]
+    # ATTR-TYPE is 'uint' or 'timestamp'
+    # SOURCE-TYPE is 'field', 'query', or 'ranged-query'
+    # QUERY is SQL query used to fetch all ( docid, attrvalue ) pairs
+    # RANGE-QUERY is SQL query used to fetch min and max ID values, similar to 'sql_query_range'
+    #
+    {% for sql_attr_multi in source.sql_attr_multi -%}
+    sql_attr_multi		= {{ sql_attr_multi }}
+    {% endfor -%}
+    {% endif %}
+
+    {% if source.sql_attr_string is defined -%}
+    # string attribute declaration
+    # multi-value (an arbitrary number of these is allowed), optional
+    # lets you store and retrieve strings
+    #
+    {% for sql_attr_string in source.sql_attr_string -%}
+    sql_attr_string		= {{ sql_attr_string }}
+    {% endfor -%}
+    {% endif %}
+
+    {% if source.sql_attr_json is defined -%}
+    # JSON attribute declaration
+    # multi-value (an arbitrary number of these is allowed), optional
+    # lets you store a JSON document as an (in-memory) attribute for later use
+    #
+    # sql_attr_json		= properties
+    {% for sql_attr_json in source.sql_attr_json -%}
+    sql_attr_json		= {{ sql_attr_json }}
+    {% endfor -%}
+    {% endif %}
+
+    {% if source.sql_field_string is defined -%}
+    # combined field plus attribute declaration (from a single column)
+    # multi-value (an arbitrary number of these is allowed), optional
+    # stores column as an attribute, but also indexes it as a full-text field
+    #
+    {% for sql_field_string in source.sql_field_string -%}
+    sql_field_string		= {{ sql_field_string }}
+    {% endfor -%}
+    {% endif %}
+
+    {% if source.sql_file_field is defined -%}
+    # file based field declaration
+    #
+    # content of this field is treated as a file name
+    # and the file gets loaded and indexed in place of a field
+    #
+    # max file size is limited by max_file_field_buffer indexer setting
+    # file IO errors are non-fatal and get reported as warnings
+    #
+    sql_file_field		= {{ source.sql_file_field }}
+    {% endif %}
+
+    {% if source.sql_query_post is defined -%}
+    # post-query, executed on sql_query completion
+    # optional, default is empty
+    #
+    sql_query_post		= {{ source.sql_query_post }}
+    {% endif %}
+
+    {% if source.sql_query_post_index is defined -%}
+    # post-index-query, executed on successful indexing completion
+    # optional, default is empty
+    # $maxid expands to max document ID actually fetched from DB
+    #
+    sql_query_post_index	= {{ source.sql_query_post_index }}
+    {% endif %}
+
+    {% if source.sql_ranged_throttle is defined -%}
+    # ranged query throttling, in milliseconds
+    # optional, default is 0 which means no delay
+    # enforces given delay before each query step
+    sql_ranged_throttle	= {{ source.sql_ranged_throttle }}
+    {% endif %}
+
+    {% if source.unpack_zlib is defined -%}
+    # columns to unpack on indexer side when indexing
+    # multi-value, optional, default is empty list
+    #
+    {% for unpack_zlib in source.unpack_zlib -%}
+    unpack_zlib		= {{ unpack_zlib }}
+    {% endfor -%}
+    {% endif %}
+    {% if source.unpack_mysqlcompress is defined -%}
+    {% for unpack_mysqlcompress in source.unpack_mysqlcompress -%}
+    unpack_mysqlcompress		= {{ unpack_mysqlcompress }}
+    {% endfor -%}
+    {% endif %}
+
+    {% if source.unpack_mysqlcompress_maxsize is defined -%}
+    # maximum unpacked length allowed in MySQL COMPRESS() unpacker
+    # optional, default is 16M
+    #
+    unpack_mysqlcompress_maxsize	= {{ source.unpack_mysqlcompress_maxsize }}
+    {% endif %}
+    {% endif %}
+
+    {% if (source.type == 'mysql') -%}
+    {% if source.mysql_connect_flags is defined -%}
+    # MySQL specific client connection flags
+    # optional, default is 0
+    #
+    mysql_connect_flags	= {{ source.mysql_connect_flags }}
+    {% endif %}
+
+    {% if (source.mysql_ssl_cert is defined) or (source.mysql_ssl_key is defined) or (source.mysql_ssl_ca is defined) -%}
+    # MySQL specific SSL certificate settings
+    # optional, defaults are empty
+    #
+    {% endif -%}
+    {% if source.mysql_ssl_cert is defined -%}
+    mysql_ssl_cert		= {{ source.mysql_ssl_cert }}
+    {% endif -%}
+    {% if source.mysql_ssl_key is defined -%}
+    mysql_ssl_key		= {{ source.mysql_ssl_key }}
+    {% endif -%}
+    {% if source.mysql_ssl_ca is defined -%}
+    mysql_ssl_ca		= {{ source.mysql_ssl_ca }}
+    {% endif -%}
+    {% endif %}
+
+    {% if source.mssql_winauth is defined -%}
+    # MS SQL specific Windows authentication mode flag
+    # MUST be in sync with charset_type index-level setting
+    # optional, default is 0
+    #
+    {% if source.mssql_winauth is defined -%}
+    mssql_winauth		= {{ source.mssql_winauth }}
+    {% endif %}
+    {% endif %}
+
+    {% if (source.type == 'odbc') -%}
+    {% if source.odbc_dsn is defined -%}
+    # ODBC specific DSN (data source name)
+    # mandatory for odbc source type, no default value
+    #
+    odbc_dsn		= {{ source.odbc_dsn }}
+    {% endif %}
+    {% endif %}
+
+    {% if (source.type == 'odbc') or (source.type == 'mssql') -%}
+    {% if source.sql_column_buffers is defined -%}
+    # ODBC and MS SQL specific, per-column buffer sizes
+    # optional, default is auto-detect
+    #
+    sql_column_buffers	= {{ source.sql_column_buffers }}
+    {% endif %}
+    {% endif %}
+
+    {% if (source.type == 'xmlpipe2') -%}
+    #####################################################################
+    ## xmlpipe2 settings
+    #####################################################################
+
+    {% if source.xmlpipe_command is defined -%}
+    # shell command to invoke xmlpipe stream producer
+    # mandatory
+    #
+    xmlpipe_command		= {{ source.xmlpipe_command }}
+    {% endif %}
+
+    {% if source.xmlpipe_field is defined -%}
+    # xmlpipe2 field declaration
+    # multi-value, optional, default is empty
+    #
+    {% for xmlpipe_field in source.xmlpipe_field -%}
+    xmlpipe_field		= {{ xmlpipe_field }}
+    {% endfor -%}
+    {% endif %}
+
+    {% if (source.xmlpipe_attr_uint is defined) or
+          (source.xmlpipe_field_string is defined) or
+          (source.xmlpipe_attr_bigint is defined) or
+          (source.xmlpipe_attr_bool is defined) or
+          (source.xmlpipe_attr_timestamp is defined) or
+          (source.xmlpipe_attr_float is defined) or
+          (source.xmlpipe_attr_multi is defined) or
+          (source.xmlpipe_attr_multi_64 is defined) or
+          (source.xmlpipe_attr_json is defined) or
+          (source.xmlpipe_attr_string is defined) or
+          (source.xmlpipe_field_string is defined) -%}
+    # xmlpipe2 attribute declaration
+    # multi-value, optional, default is empty
+    # all xmlpipe_attr_XXX options are fully similar to sql_attr_XXX
+    # examples:
+    #
+    {% endif -%}
+    {% if source.xmlpipe_attr_uint is defined -%}
+    {% for xmlpipe_attr_uint in source.xmlpipe_attr_uint -%}
+    xmlpipe_attr_uint		= {{ xmlpipe_attr_uint }}
+    {% endfor -%}
+    {% endif -%}
+    {% if source.xmlpipe_field_string is defined -%}
+    {% for xmlpipe_field_string in source.xmlpipe_field_string -%}
+    xmlpipe_field_string		= {{ xmlpipe_field_string }}
+    {% endfor -%}
+    {% endif -%}
+    {% if source.xmlpipe_attr_bigint is defined -%}
+    {% for xmlpipe_attr_bigint in source.xmlpipe_attr_bigint -%}
+    xmlpipe_attr_bigint		= {{ xmlpipe_attr_bigint }}
+    {% endfor -%}
+    {% endif -%}
+    {% if source.xmlpipe_attr_bool is defined -%}
+    {% for xmlpipe_attr_bool in source.xmlpipe_attr_bool -%}
+    xmlpipe_attr_bool		= {{ xmlpipe_attr_bool }}
+    {% endfor -%}
+    {% endif -%}
+    {% if source.xmlpipe_attr_timestamp is defined -%}
+    {% for xmlpipe_attr_timestamp in source.xmlpipe_attr_timestamp -%}
+    xmlpipe_attr_timestamp		= {{ xmlpipe_attr_timestamp }}
+    {% endfor -%}
+    {% endif -%}
+    {% if source.xmlpipe_attr_float is defined -%}
+    {% for xmlpipe_attr_float in source.xmlpipe_attr_float -%}
+    xmlpipe_attr_float		= {{ xmlpipe_attr_float }}
+    {% endfor -%}
+    {% endif -%}
+    {% if source.xmlpipe_attr_multi is defined -%}
+    {% for xmlpipe_attr_multi in source.xmlpipe_attr_multi -%}
+    xmlpipe_attr_multi		= {{ xmlpipe_attr_multi }}
+    {% endfor -%}
+    {% endif -%}
+    {% if source.xmlpipe_attr_multi_64 is defined -%}
+    {% for xmlpipe_attr_multi_64 in source.xmlpipe_attr_multi_64 -%}
+    xmlpipe_attr_multi_64		= {{ xmlpipe_attr_multi_64 }}
+    {% endfor -%}
+    {% endif -%}
+    {% if source.xmlpipe_attr_json is defined -%}
+    {% for xmlpipe_attr_json in source.xmlpipe_attr_json -%}
+    xmlpipe_attr_json		= {{ xmlpipe_attr_json }}
+    {% endfor -%}
+    {% endif -%}
+    {% if source.xmlpipe_attr_string is defined -%}
+    {% for xmlpipe_attr_string in source.xmlpipe_attr_string -%}
+    xmlpipe_attr_string		= {{ xmlpipe_attr_string }}
+    {% endfor -%}
+    {% endif -%}
+    {% if source.xmlpipe_field_string is defined -%}
+    {% for xmlpipe_field_string in source.xmlpipe_field_string -%}
+    xmlpipe_field_string		= {{ xmlpipe_field_string }}
+    {% endfor -%}
+    {% endif %}
+
+    {% if source.xmlpipe_fixup_utf8 is defined -%}
+    # perform UTF-8 validation, and filter out incorrect codes
+    # avoids XML parser choking on non-UTF-8 documents
+    # optional, default is 0
+    #
+    xmlpipe_fixup_utf8	= {{ source.xmlpipe_fixup_utf8 }}
+    {% endif %}
+    {% endif %}
+
+    {% if (source.type == 'csvpipe') -%}
+    #####################################################################
+    ## csvpipe settings
+    #####################################################################
+
+    {% if source.csvpipe_delimiter is defined -%}
+    csvpipe_delimiter = {{ source.csvpipe_delimiter }}
+    {% endif %}
+    {% if source.csvpipe_command is defined -%}
+    {% for csvpipe_command in source.csvpipe_command -%}
+    csvpipe_command		= {{ csvpipe_command }}
+    {% endfor -%}
+    {% endif -%}
+    {% if source.csvpipe_field is defined -%}
+    {% for csvpipe_field in source.csvpipe_field -%}
+    csvpipe_field		= {{ csvpipe_field }}
+    {% endfor -%}
+    {% endif -%}
+    {% if source.csvpipe_field_string is defined -%}
+    {% for csvpipe_field_string in source.csvpipe_field_string -%}
+    csvpipe_field_string		= {{ csvpipe_field_string }}
+    {% endfor -%}
+    {% endif -%}
+    {% if source.csvpipe_attr_uint is defined -%}
+    {% for csvpipe_attr_uint in source.csvpipe_attr_uint -%}
+    csvpipe_attr_uint		= {{ csvpipe_attr_uint }}
+    {% endfor -%}
+    {% endif -%}
+    {% if source.csvpipe_attr_timestamp is defined -%}
+    {% for csvpipe_attr_timestamp in source.csvpipe_attr_timestamp -%}
+    csvpipe_attr_timestamp		= {{ csvpipe_attr_timestamp }}
+    {% endfor -%}
+    {% endif -%}
+    {% if source.csvpipe_attr_bool is defined -%}
+    {% for csvpipe_attr_bool in source.csvpipe_attr_bool -%}
+    csvpipe_attr_bool		= {{ csvpipe_attr_bool }}
+    {% endfor -%}
+    {% endif -%}
+    {% if source.csvpipe_attr_float is defined -%}
+    {% for csvpipe_attr_float in source.csvpipe_attr_float -%}
+    csvpipe_attr_float		= {{ csvpipe_attr_float }}
+    {% endfor -%}
+    {% endif -%}
+    {% if source.csvpipe_attr_bigint is defined -%}
+    {% for csvpipe_attr_bigint in source.csvpipe_attr_bigint -%}
+    csvpipe_attr_bigint		= {{ csvpipe_attr_bigint }}
+    {% endfor -%}
+    {% endif -%}
+    {% if source.csvpipe_attr_multi is defined -%}
+    {% for csvpipe_attr_multi in source.csvpipe_attr_multi -%}
+    csvpipe_attr_multi		= {{ csvpipe_attr_multi }}
+    {% endfor -%}
+    {% endif -%}
+    {% if source.csvpipe_attr_multi_64 is defined -%}
+    {% for csvpipe_attr_multi_64 in source.csvpipe_attr_multi_64 -%}
+    csvpipe_attr_multi_64		= {{ csvpipe_attr_multi_64 }}
+    {% endfor -%}
+    {% endif -%}
+    {% if source.csvpipe_attr_string is defined -%}
+    {% for csvpipe_attr_string in source.csvpipe_attr_string -%}
+    csvpipe_attr_string		= {{ csvpipe_attr_string }}
+    {% endfor -%}
+    {% endif -%}
+    {% if source.csvpipe_attr_json is defined -%}
+    {% for csvpipe_attr_json in source.csvpipe_attr_json -%}
+    csvpipe_attr_json		= {{ csvpipe_attr_json }}
+    {% endfor -%}
+    {% endif -%}
+    {% endif %}
+
+    {% if (source.type == 'tsvpipe') -%}
+    #####################################################################
+    ## tsvpipe settings
+    #####################################################################
+
+    {% if source.tsvpipe_command is defined -%}
+    {% for tsvpipe_command in source.tsvpipe_command -%}
+    tsvpipe_command		= {{ tsvpipe_command }}
+    {% endfor -%}
+    {% endif -%}
+    {% if source.tsvpipe_field is defined -%}
+    {% for tsvpipe_field in source.tsvpipe_field -%}
+    tsvpipe_field		= {{ tsvpipe_field }}
+    {% endfor -%}
+    {% endif -%}
+    {% if source.tsvpipe_field_string is defined -%}
+    {% for tsvpipe_field_string in source.tsvpipe_field_string -%}
+    tsvpipe_field_string		= {{ tsvpipe_field_string }}
+    {% endfor -%}
+    {% endif -%}
+    {% if source.tsvpipe_attr_uint is defined -%}
+    {% for tsvpipe_attr_uint in source.tsvpipe_attr_uint -%}
+    tsvpipe_attr_uint		= {{ tsvpipe_attr_uint }}
+    {% endfor -%}
+    {% endif -%}
+    {% if source.tsvpipe_attr_timestamp is defined -%}
+    {% for tsvpipe_attr_timestamp in source.tsvpipe_attr_timestamp -%}
+    tsvpipe_attr_timestamp		= {{ tsvpipe_attr_timestamp }}
+    {% endfor -%}
+    {% endif -%}
+    {% if source.tsvpipe_attr_bool is defined -%}
+    {% for tsvpipe_attr_bool in source.tsvpipe_attr_bool -%}
+    tsvpipe_attr_bool		= {{ tsvpipe_attr_bool }}
+    {% endfor -%}
+    {% endif -%}
+    {% if source.tsvpipe_attr_float is defined -%}
+    {% for tsvpipe_attr_float in source.tsvpipe_attr_float -%}
+    tsvpipe_attr_float		= {{ tsvpipe_attr_float }}
+    {% endfor -%}
+    {% endif -%}
+    {% if source.tsvpipe_attr_bigint is defined -%}
+    {% for tsvpipe_attr_bigint in source.tsvpipe_attr_bigint -%}
+    tsvpipe_attr_bigint		= {{ tsvpipe_attr_bigint }}
+    {% endfor -%}
+    {% endif -%}
+    {% if source.tsvpipe_attr_multi is defined -%}
+    {% for tsvpipe_attr_multi in source.tsvpipe_attr_multi -%}
+    tsvpipe_attr_multi		= {{ tsvpipe_attr_multi }}
+    {% endfor -%}
+    {% endif -%}
+    {% if source.tsvpipe_attr_multi_64 is defined -%}
+    {% for tsvpipe_attr_multi_64 in source.tsvpipe_attr_multi_64 -%}
+    tsvpipe_attr_multi_64		= {{ tsvpipe_attr_multi_64 }}
+    {% endfor -%}
+    {% endif -%}
+    {% if source.tsvpipe_attr_string is defined -%}
+    {% for tsvpipe_attr_string in source.tsvpipe_attr_string -%}
+    tsvpipe_attr_string		= {{ tsvpipe_attr_string }}
+    {% endfor -%}
+    {% endif -%}
+    {% if source.tsvpipe_attr_json is defined -%}
+    {% for tsvpipe_attr_json in source.tsvpipe_attr_json -%}
+    tsvpipe_attr_json		= {{ tsvpipe_attr_json }}
+    {% endfor -%}
+    {% endif -%}
+    {% endif %}
+}
+{% endif -%}
+{% endfor -%}
+{% endif %}
+
+{% if (inherited_sources is defined) and inherited_sources -%}
+# inherited source
+#
+# all the parameters are copied from the parent source,
+# and may then be overridden in this source definition
+{% for inherited_source in inherited_sources -%}
+{% if (inherited_source.parent is defined) and (inherited_source.name is defined) -%}
+source {{ inherited_source.parent }} : {{ inherited_source.name }}
+{
+
+    {% set parent_source_type = sources | selectattr("name", "equalto", inherited_source.parent) | map(attribute='type') | list %}
+
+    {% if inherited_source.type is defined -%}
+    # data source type. mandatory, no default value
+    # known types are mysql, pgsql, mssql, xmlpipe2, tsvpipe, csvpipe and odbc
+    type			= {{ inherited_source.type }}
+    {% endif %}
+
+    {% if (parent_source_type[0] == 'mysql') or (parent_source_type[0] == 'pgsql') or (parent_source_type[0] == 'mssql') -%}
+    #####################################################################
+    ## SQL settings (for 'mysql', 'pgsql' and 'mssql' types)
+    #####################################################################
+    {% if (inherited_source.sql_host is defined) or
+          (inherited_source.sql_user is defined) or
+          (inherited_source.sql_pass is defined) or
+          (inherited_source.sql_db is defined) or
+          (inherited_source.sql_port is defined) -%}
+    # some straightforward parameters for SQL source types
+    {% endif -%}
+    {% if inherited_source.sql_host is defined -%}
+    sql_host		= {{ inherited_source.sql_host }}
+    {% endif -%}
+    {% if inherited_source.sql_user is defined -%}
+    sql_user		= {{ inherited_source.sql_user }}
+    {% endif -%}
+    {% if inherited_source.sql_pass is defined -%}
+    sql_pass		= {{ inherited_source.sql_pass }}
+    {% endif -%}
+    {% if inherited_source.sql_db is defined -%}
+    sql_db			= {{ inherited_source.sql_db }}
+    {% endif -%}
+    {% if inherited_source.sql_port is defined -%}
+    sql_port		= {{ inherited_source.sql_port }}	# optional, default is 3306
+    {% endif %}
+
+    {% if inherited_source.sql_sock is defined -%}
+    # UNIX socket name
+    # optional, default is empty (reuse client library defaults)
+    # usually '/var/lib/mysql/mysql.sock' on Linux
+    # usually '/tmp/mysql.sock' on FreeBSD
+    sql_sock		= {{ inherited_source.sql_sock }}
+    {% endif %}
+
+    {% if inherited_source.sql_query_pre is defined -%}
+    # pre-query, executed before the main fetch query
+    # multi-value, optional, default is empty list of queries
+    {% for sql_query_pre in inherited_source.sql_query_pre -%}
+    sql_query_pre		= {{ sql_query_pre }}
+    {% endfor -%}
+    {% endif %}
+
+    {% if inherited_source.sql_query is defined -%}
+    # main document fetch query
+    # mandatory, integer document ID field MUST be the first selected column
+    sql_query		= {{ inherited_source.sql_query }}
+    {% endif %}
+
+    {% if inherited_source.sql_joined_field is defined -%}
+    # joined/payload field fetch query
+    # joined fields let you avoid (slow) JOIN and GROUP_CONCAT
+    # payload fields let you attach custom per-keyword values (eg. for ranking)
+    #
+    # syntax is FIELD-NAME 'from'  ( 'query' | 'payload-query' ); QUERY
+    # joined field QUERY should return 2 columns (docid, text)
+    # payload field QUERY should return 3 columns (docid, keyword, weight)
+    #
+    # REQUIRES that query results are in ascending document ID order!
+    # multi-value, optional, default is empty list of queries
+    #
+    {% for sql_joined_field in inherited_source.sql_joined_field -%}
+    sql_joined_field	= {{ sql_joined_field }}
+    {% endfor -%}
+    {% endif %}
+
+    {% if inherited_source.sql_query_range is defined -%}
+    # range query setup, query that must return min and max ID values
+    # optional, default is empty
+    #
+    # sql_query will need to reference $start and $end boundaries
+    # if using ranged query:
+    #
+    # sql_query		= \
+    #	SELECT doc.id, doc.id AS group, doc.title, doc.data \
+    #	FROM documents doc \
+    #	WHERE id>=$start AND id<=$end
+    #
+    sql_query_range		= {{ inherited_source.sql_query_range }}
+    {% endif %}
+
+    {% if inherited_source.sql_range_step is defined -%}
+    # range query step
+    # optional, default is 1024
+    #
+    sql_range_step		= {{ inherited_source.sql_range_step }}
+    {% endif %}
+
+    {% if inherited_source.sql_query_killlist is defined -%}
+    # kill-list query, fetches the document IDs for kill-list
+    # k-list will suppress matches from preceding indexes in the same query
+    # optional, default is empty
+    #
+    sql_query_killlist	= {{ inherited_source.sql_query_killlist }}
+    {% endif %}
+
+    {% if inherited_source.sql_attr_uint is defined -%}
+    # unsigned integer attribute declaration
+    # multi-value (an arbitrary number of attributes is allowed), optional
+    # optional bit size can be specified, default is 32
+    #
+    # sql_attr_uint		= author_id
+    # sql_attr_uint		= forum_id:9 # 9 bits for forum_id
+    {% for sql_attr_uint in inherited_source.sql_attr_uint -%}
+    sql_attr_uint		= {{ sql_attr_uint }}
+    {% endfor -%}
+    {% endif %}
+
+    {% if inherited_source.sql_attr_bool is defined -%}
+    # boolean attribute declaration
+    # multi-value (an arbitrary number of attributes is allowed), optional
+    # equivalent to sql_attr_uint with 1-bit size
+    #
+    {% for sql_attr_bool in inherited_source.sql_attr_bool -%}
+    sql_attr_bool		= {{ sql_attr_bool }}
+    {% endfor -%}
+    {% endif %}
+
+    {% if inherited_source.sql_attr_bigint is defined -%}
+    # bigint attribute declaration
+    # multi-value (an arbitrary number of attributes is allowed), optional
+    # declares a signed (unlike uint!) 64-bit attribute
+    #
+    {% for sql_attr_bigint in inherited_source.sql_attr_bigint -%}
+    sql_attr_bigint		= {{ sql_attr_bigint }}
+    {% endfor -%}
+    {% endif %}
+
+    {% if inherited_source.sql_attr_timestamp is defined -%}
+    # UNIX timestamp attribute declaration
+    # multi-value (an arbitrary number of attributes is allowed), optional
+    # similar to integer, but can also be used in date functions
+    #
+    {% for sql_attr_timestamp in inherited_source.sql_attr_timestamp -%}
+    sql_attr_timestamp	= {{ sql_attr_timestamp }}
+    {% endfor -%}
+    {% endif %}
+
+    {% if inherited_source.sql_attr_float is defined -%}
+    # floating point attribute declaration
+    # multi-value (an arbitrary number of attributes is allowed), optional
+    # values are stored in single precision, 32-bit IEEE 754 format
+    #
+    {% for sql_attr_float in inherited_source.sql_attr_float -%}
+    sql_attr_float		= {{ sql_attr_float }}
+    {% endfor -%}
+    {% endif %}
+
+    {% if inherited_source.sql_attr_multi is defined -%}
+    # multi-valued attribute (MVA) attribute declaration
+    # multi-value (an arbitrary number of attributes is allowed), optional
+    # MVA values are variable length lists of unsigned 32-bit integers
+    #
+    # syntax is ATTR-TYPE ATTR-NAME 'from' SOURCE-TYPE [;QUERY] [;RANGE-QUERY]
+    # ATTR-TYPE is 'uint' or 'timestamp'
+    # SOURCE-TYPE is 'field', 'query', or 'ranged-query'
+    # QUERY is SQL query used to fetch all ( docid, attrvalue ) pairs
+    # RANGE-QUERY is SQL query used to fetch min and max ID values, similar to 'sql_query_range'
+    #
+    {% for sql_attr_multi in inherited_source.sql_attr_multi -%}
+    sql_attr_multi		= {{ sql_attr_multi }}
+    {% endfor -%}
+    {% endif %}
+
+    {% if inherited_source.sql_attr_string is defined -%}
+    # string attribute declaration
+    # multi-value (an arbitrary number of these is allowed), optional
+    # lets you store and retrieve strings
+    #
+    {% for sql_attr_string in inherited_source.sql_attr_string -%}
+    sql_attr_string		= {{ sql_attr_string }}
+    {% endfor -%}
+    {% endif %}
+
+    {% if inherited_source.sql_attr_json is defined -%}
+    # JSON attribute declaration
+    # multi-value (an arbitrary number of these is allowed), optional
+    # lets you store a JSON document as an (in-memory) attribute for later use
+    #
+    # sql_attr_json		= properties
+    {% for sql_attr_json in inherited_source.sql_attr_json -%}
+    sql_attr_json		= {{ sql_attr_json }}
+    {% endfor -%}
+    {% endif %}
+
+    {% if inherited_source.sql_field_string is defined -%}
+    # combined field plus attribute declaration (from a single column)
+    # multi-value (an arbitrary number of these is allowed), optional
+    # stores column as an attribute, but also indexes it as a full-text field
+    #
+    {% for sql_field_string in inherited_source.sql_field_string -%}
+    sql_field_string		= {{ sql_field_string }}
+    {% endfor -%}
+    {% endif %}
+
+    {% if inherited_source.sql_file_field is defined -%}
+    # file based field declaration
+    #
+    # content of this field is treated as a file name
+    # and the file gets loaded and indexed in place of a field
+    #
+    # max file size is limited by max_file_field_buffer indexer setting
+    # file IO errors are non-fatal and get reported as warnings
+    #
+    sql_file_field		= {{ inherited_source.sql_file_field }}
+    {% endif %}
+
+    {% if inherited_source.sql_query_post is defined -%}
+    # post-query, executed on sql_query completion
+    # optional, default is empty
+    #
+    sql_query_post		= {{ inherited_source.sql_query_post }}
+    {% endif %}
+
+    {% if inherited_source.sql_query_post_index is defined -%}
+    # post-index-query, executed on successful indexing completion
+    # optional, default is empty
+    # $maxid expands to max document ID actually fetched from DB
+    #
+    sql_query_post_index	= {{ inherited_source.sql_query_post_index }}
+    {% endif %}
+
+    {% if inherited_source.sql_ranged_throttle is defined -%}
+    # ranged query throttling, in milliseconds
+    # optional, default is 0 which means no delay
+    # enforces given delay before each query step
+    sql_ranged_throttle	= {{ inherited_source.sql_ranged_throttle }}
+    {% endif %}
+
+    {% if inherited_source.unpack_zlib is defined -%}
+    # columns to unpack on indexer side when indexing
+    # multi-value, optional, default is empty list
+    #
+    {% for unpack_zlib in inherited_source.unpack_zlib -%}
+    unpack_zlib		= {{ unpack_zlib }}
+    {% endfor -%}
+    {% endif %}
+    {% if inherited_source.unpack_mysqlcompress is defined -%}
+    {% for unpack_mysqlcompress in inherited_source.unpack_mysqlcompress -%}
+    unpack_mysqlcompress		= {{ unpack_mysqlcompress }}
+    {% endfor -%}
+    {% endif %}
+
+    {% if inherited_source.unpack_mysqlcompress_maxsize is defined -%}
+    # maximum unpacked length allowed in MySQL COMPRESS() unpacker
+    # optional, default is 16M
+    #
+    unpack_mysqlcompress_maxsize	= {{ inherited_source.unpack_mysqlcompress_maxsize }}
+    {% endif %}
+    {% endif %}
+
+    {% if (parent_source_type[0] == 'mysql') -%}
+    {% if inherited_source.mysql_connect_flags is defined -%}
+    # MySQL specific client connection flags
+    # optional, default is 0
+    #
+    mysql_connect_flags	= {{ inherited_source.mysql_connect_flags }}
+    {% endif %}
+
+    {% if (inherited_source.mysql_ssl_cert is defined) or (inherited_source.mysql_ssl_key is defined) or (inherited_source.mysql_ssl_ca is defined) -%}
+    # MySQL specific SSL certificate settings
+    # optional, defaults are empty
+    #
+    {% endif -%}
+    {% if inherited_source.mysql_ssl_cert is defined -%}
+    mysql_ssl_cert		= {{ inherited_source.mysql_ssl_cert }}
+    {% endif -%}
+    {% if inherited_source.mysql_ssl_key is defined -%}
+    mysql_ssl_key		= {{ inherited_source.mysql_ssl_key }}
+    {% endif -%}
+    {% if inherited_source.mysql_ssl_ca is defined -%}
+    mysql_ssl_ca		= {{ inherited_source.mysql_ssl_ca }}
+    {% endif -%}
+    {% endif %}
+
+    {% if parent_source.mssql_winauth is defined -%}
+    # MS SQL specific Windows authentication mode flag
+    # MUST be in sync with charset_type index-level setting
+    # optional, default is 0
+    #
+    {% if inherited_source.mssql_winauth is defined -%}
+    mssql_winauth		= {{ inherited_source.mssql_winauth }}
+    {% endif %}
+    {% endif %}
+
+    {% if (parent_source_type[0] == 'odbc') -%}
+    {% if inherited_source.odbc_dsn is defined -%}
+    # ODBC specific DSN (data source name)
+    # mandatory for odbc source type, no default value
+    #
+    odbc_dsn		= {{ inherited_source.odbc_dsn }}
+    {% endif %}
+    {% endif %}
+
+    {% if (parent_source_type[0] == 'odbc') or (parent_source_type[0] == 'mssql') -%}
+    {% if inherited_source.sql_column_buffers is defined -%}
+    # ODBC and MS SQL specific, per-column buffer sizes
+    # optional, default is auto-detect
+    #
+    sql_column_buffers	= {{ inherited_source.sql_column_buffers }}
+    {% endif %}
+    {% endif %}
+
+    {% if (parent_source_type[0] == 'xmlpipe2') -%}
+    #####################################################################
+    ## xmlpipe2 settings
+    #####################################################################
+
+    {% if inherited_source.xmlpipe_command is defined -%}
+    # shell command to invoke xmlpipe stream producer
+    # mandatory
+    #
+    xmlpipe_command		= {{ inherited_source.xmlpipe_command }}
+    {% endif %}
+
+    {% if inherited_source.xmlpipe_field is defined -%}
+    # xmlpipe2 field declaration
+    # multi-value, optional, default is empty
+    #
+    {% for xmlpipe_field in inherited_source.xmlpipe_field -%}
+    xmlpipe_field		= {{ xmlpipe_field }}
+    {% endfor -%}
+    {% endif %}
+
+    {% if (inherited_source.xmlpipe_attr_uint is defined) or
+          (inherited_source.xmlpipe_field_string is defined) or
+          (inherited_source.xmlpipe_attr_bigint is defined) or
+          (inherited_source.xmlpipe_attr_bool is defined) or
+          (inherited_source.xmlpipe_attr_timestamp is defined) or
+          (inherited_source.xmlpipe_attr_float is defined) or
+          (inherited_source.xmlpipe_attr_multi is defined) or
+          (inherited_source.xmlpipe_attr_multi_64 is defined) or
+          (inherited_source.xmlpipe_attr_json is defined) or
+          (inherited_source.xmlpipe_attr_string is defined) or
+          (inherited_source.xmlpipe_field_string is defined) -%}
+    # xmlpipe2 attribute declaration
+    # multi-value, optional, default is empty
+    # all xmlpipe_attr_XXX options are fully similar to sql_attr_XXX
+    # examples:
+    #
+    {% endif -%}
+    {% if inherited_source.xmlpipe_attr_uint is defined -%}
+    {% for xmlpipe_attr_uint in inherited_source.xmlpipe_attr_uint -%}
+    xmlpipe_attr_uint		= {{ xmlpipe_attr_uint }}
+    {% endfor -%}
+    {% endif -%}
+    {% if inherited_source.xmlpipe_field_string is defined -%}
+    {% for xmlpipe_field_string in inherited_source.xmlpipe_field_string -%}
+    xmlpipe_field_string		= {{ xmlpipe_field_string }}
+    {% endfor -%}
+    {% endif -%}
+    {% if inherited_source.xmlpipe_attr_bigint is defined -%}
+    {% for xmlpipe_attr_bigint in inherited_source.xmlpipe_attr_bigint -%}
+    xmlpipe_attr_bigint		= {{ xmlpipe_attr_bigint }}
+    {% endfor -%}
+    {% endif -%}
+    {% if inherited_source.xmlpipe_attr_bool is defined -%}
+    {% for xmlpipe_attr_bool in inherited_source.xmlpipe_attr_bool -%}
+    xmlpipe_attr_bool		= {{ xmlpipe_attr_bool }}
+    {% endfor -%}
+    {% endif -%}
+    {% if inherited_source.xmlpipe_attr_timestamp is defined -%}
+    {% for xmlpipe_attr_timestamp in inherited_source.xmlpipe_attr_timestamp -%}
+    xmlpipe_attr_timestamp		= {{ xmlpipe_attr_timestamp }}
+    {% endfor -%}
+    {% endif -%}
+    {% if inherited_source.xmlpipe_attr_float is defined -%}
+    {% for xmlpipe_attr_float in inherited_source.xmlpipe_attr_float -%}
+    xmlpipe_attr_float		= {{ xmlpipe_attr_float }}
+    {% endfor -%}
+    {% endif -%}
+    {% if inherited_source.xmlpipe_attr_multi is defined -%}
+    {% for xmlpipe_attr_multi in inherited_source.xmlpipe_attr_multi -%}
+    xmlpipe_attr_multi		= {{ xmlpipe_attr_multi }}
+    {% endfor -%}
+    {% endif -%}
+    {% if inherited_source.xmlpipe_attr_multi_64 is defined -%}
+    {% for xmlpipe_attr_multi_64 in inherited_source.xmlpipe_attr_multi_64 -%}
+    xmlpipe_attr_multi_64		= {{ xmlpipe_attr_multi_64 }}
+    {% endfor -%}
+    {% endif -%}
+    {% if inherited_source.xmlpipe_attr_json is defined -%}
+    {% for xmlpipe_attr_json in inherited_source.xmlpipe_attr_json -%}
+    xmlpipe_attr_json		= {{ xmlpipe_attr_json }}
+    {% endfor -%}
+    {% endif -%}
+    {% if inherited_source.xmlpipe_attr_string is defined -%}
+    {% for xmlpipe_attr_string in inherited_source.xmlpipe_attr_string -%}
+    xmlpipe_attr_string		= {{ xmlpipe_attr_string }}
+    {% endfor -%}
+    {% endif -%}
+    {% if inherited_source.xmlpipe_field_string is defined -%}
+    {% for xmlpipe_field_string in inherited_source.xmlpipe_field_string -%}
+    xmlpipe_field_string		= {{ xmlpipe_field_string }}
+    {% endfor -%}
+    {% endif %}
+
+    {% if inherited_source.xmlpipe_fixup_utf8 is defined -%}
+    # perform UTF-8 validation, and filter out incorrect codes
+    # avoids XML parser choking on non-UTF-8 documents
+    # optional, default is 0
+    #
+    xmlpipe_fixup_utf8	= {{ inherited_source.xmlpipe_fixup_utf8 }}
+    {% endif %}
+    {% endif %}
+
+    {% if (parent_source_type[0] == 'csvpipe') -%}
+    #####################################################################
+    ## csvpipe settings
+    #####################################################################
+
+    {% if inherited_source.csvpipe_delimiter is defined -%}
+    csvpipe_delimiter = {{ inherited_source.csvpipe_delimiter }}
+    {% endif %}
+    {% if inherited_source.csvpipe_command is defined -%}
+    {% for csvpipe_command in inherited_source.csvpipe_command -%}
+    csvpipe_command		= {{ csvpipe_command }}
+    {% endfor -%}
+    {% endif -%}
+    {% if inherited_source.csvpipe_field is defined -%}
+    {% for csvpipe_field in inherited_source.csvpipe_field -%}
+    csvpipe_field		= {{ csvpipe_field }}
+    {% endfor -%}
+    {% endif -%}
+    {% if inherited_source.csvpipe_field_string is defined -%}
+    {% for csvpipe_field_string in inherited_source.csvpipe_field_string -%}
+    csvpipe_field_string		= {{ csvpipe_field_string }}
+    {% endfor -%}
+    {% endif -%}
+    {% if inherited_source.csvpipe_attr_uint is defined -%}
+    {% for csvpipe_attr_uint in inherited_source.csvpipe_attr_uint -%}
+    csvpipe_attr_uint		= {{ csvpipe_attr_uint }}
+    {% endfor -%}
+    {% endif -%}
+    {% if inherited_source.csvpipe_attr_timestamp is defined -%}
+    {% for csvpipe_attr_timestamp in inherited_source.csvpipe_attr_timestamp -%}
+    csvpipe_attr_timestamp		= {{ csvpipe_attr_timestamp }}
+    {% endfor -%}
+    {% endif -%}
+    {% if inherited_source.csvpipe_attr_bool is defined -%}
+    {% for csvpipe_attr_bool in inherited_source.csvpipe_attr_bool -%}
+    csvpipe_attr_bool		= {{ csvpipe_attr_bool }}
+    {% endfor -%}
+    {% endif -%}
+    {% if inherited_source.csvpipe_attr_float is defined -%}
+    {% for csvpipe_attr_float in inherited_source.csvpipe_attr_float -%}
+    csvpipe_attr_float		= {{ csvpipe_attr_float }}
+    {% endfor -%}
+    {% endif -%}
+    {% if inherited_source.csvpipe_attr_bigint is defined -%}
+    {% for csvpipe_attr_bigint in inherited_source.csvpipe_attr_bigint -%}
+    csvpipe_attr_bigint		= {{ csvpipe_attr_bigint }}
+    {% endfor -%}
+    {% endif -%}
+    {% if inherited_source.csvpipe_attr_multi is defined -%}
+    {% for csvpipe_attr_multi in inherited_source.csvpipe_attr_multi -%}
+    csvpipe_attr_multi		= {{ csvpipe_attr_multi }}
+    {% endfor -%}
+    {% endif -%}
+    {% if inherited_source.csvpipe_attr_multi_64 is defined -%}
+    {% for csvpipe_attr_multi_64 in inherited_source.csvpipe_attr_multi_64 -%}
+    csvpipe_attr_multi_64		= {{ csvpipe_attr_multi_64 }}
+    {% endfor -%}
+    {% endif -%}
+    {% if inherited_source.csvpipe_attr_string is defined -%}
+    {% for csvpipe_attr_string in inherited_source.csvpipe_attr_string -%}
+    csvpipe_attr_string		= {{ csvpipe_attr_string }}
+    {% endfor -%}
+    {% endif -%}
+    {% if inherited_source.csvpipe_attr_json is defined -%}
+    {% for csvpipe_attr_json in inherited_source.csvpipe_attr_json -%}
+    csvpipe_attr_json		= {{ csvpipe_attr_json }}
+    {% endfor -%}
+    {% endif -%}
+    {% endif %}
+
+    {% if (parent_source_type[0] == 'tsvpipe') -%}
+    #####################################################################
+    ## tsvpipe settings
+    #####################################################################
+
+    {% if inherited_source.tsvpipe_command is defined -%}
+    {% for tsvpipe_command in inherited_source.tsvpipe_command -%}
+    tsvpipe_command		= {{ tsvpipe_command }}
+    {% endfor -%}
+    {% endif -%}
+    {% if inherited_source.tsvpipe_field is defined -%}
+    {% for tsvpipe_field in inherited_source.tsvpipe_field -%}
+    tsvpipe_field		= {{ tsvpipe_field }}
+    {% endfor -%}
+    {% endif -%}
+    {% if inherited_source.tsvpipe_field_string is defined -%}
+    {% for tsvpipe_field_string in inherited_source.tsvpipe_field_string -%}
+    tsvpipe_field_string		= {{ tsvpipe_field_string }}
+    {% endfor -%}
+    {% endif -%}
+    {% if inherited_source.tsvpipe_attr_uint is defined -%}
+    {% for tsvpipe_attr_uint in inherited_source.tsvpipe_attr_uint -%}
+    tsvpipe_attr_uint		= {{ tsvpipe_attr_uint }}
+    {% endfor -%}
+    {% endif -%}
+    {% if inherited_source.tsvpipe_attr_timestamp is defined -%}
+    {% for tsvpipe_attr_timestamp in inherited_source.tsvpipe_attr_timestamp -%}
+    tsvpipe_attr_timestamp		= {{ tsvpipe_attr_timestamp }}
+    {% endfor -%}
+    {% endif -%}
+    {% if inherited_source.tsvpipe_attr_bool is defined -%}
+    {% for tsvpipe_attr_bool in inherited_source.tsvpipe_attr_bool -%}
+    tsvpipe_attr_bool		= {{ tsvpipe_attr_bool }}
+    {% endfor -%}
+    {% endif -%}
+    {% if inherited_source.tsvpipe_attr_float is defined -%}
+    {% for tsvpipe_attr_float in inherited_source.tsvpipe_attr_float -%}
+    tsvpipe_attr_float		= {{ tsvpipe_attr_float }}
+    {% endfor -%}
+    {% endif -%}
+    {% if inherited_source.tsvpipe_attr_bigint is defined -%}
+    {% for tsvpipe_attr_bigint in inherited_source.tsvpipe_attr_bigint -%}
+    tsvpipe_attr_bigint		= {{ tsvpipe_attr_bigint }}
+    {% endfor -%}
+    {% endif -%}
+    {% if inherited_source.tsvpipe_attr_multi is defined -%}
+    {% for tsvpipe_attr_multi in inherited_source.tsvpipe_attr_multi -%}
+    tsvpipe_attr_multi		= {{ tsvpipe_attr_multi }}
+    {% endfor -%}
+    {% endif -%}
+    {% if inherited_source.tsvpipe_attr_multi_64 is defined -%}
+    {% for tsvpipe_attr_multi_64 in inherited_source.tsvpipe_attr_multi_64 -%}
+    tsvpipe_attr_multi_64		= {{ tsvpipe_attr_multi_64 }}
+    {% endfor -%}
+    {% endif -%}
+    {% if inherited_source.tsvpipe_attr_string is defined -%}
+    {% for tsvpipe_attr_string in inherited_source.tsvpipe_attr_string -%}
+    tsvpipe_attr_string		= {{ tsvpipe_attr_string }}
+    {% endfor -%}
+    {% endif -%}
+    {% if inherited_source.tsvpipe_attr_json is defined -%}
+    {% for tsvpipe_attr_json in inherited_source.tsvpipe_attr_json -%}
+    tsvpipe_attr_json		= {{ tsvpipe_attr_json }}
+    {% endfor -%}
+    {% endif -%}
+    {% endif %}
+
+}
+{% endif -%}
+{% endfor -%}
+{% endif %}
+
+{% if (indices is defined) and indices -%}
+#############################################################################
+## index definition
+#############################################################################
+
+{% for index in indices -%}
+{% if index.name is defined -%}
+{% if (index.type is defined) and index.type == 'plain' -%}
+# local index
+#
+# this is an index which is stored locally in the filesystem
+#
+# all indexing-time options (such as morphology and charsets)
+# are configured per local index
+{% endif -%}
+{% if (index.type is defined) and index.type == 'distributed' -%}
+# distributed index
+#
+# this is a virtual index which can NOT be directly indexed,
+# and only contains references to other local and/or remote indexes
+{% endif -%}
+{% if (index.type is defined) and index.type == 'rt' -%}
+# realtime index
+#
+# you can run INSERT, REPLACE, and DELETE on this index on the fly
+# using MySQL protocol (see 'listen' directive below)
+{% endif -%}
+index {{ index.name }}
+{
+    {% if index.type is defined -%}
+    # index type
+    # optional, default is 'plain'
+    # known values are 'plain', 'distributed', 'rt' and 'template'
+    type			= {{ index.type }}
+    {% endif %}
+
+    {% if (index.type == 'plain') or (index.parent is defined) -%}
+    #####################################################################
+    ## Plain settings (for 'plain' type)
+    #####################################################################
+
+    {% if index.source is defined -%}
+    # document source(s) to index
+    # multi-value, mandatory
+    # document IDs must be globally unique across all sources
+    source			= {{ index.source }}
+    {% endif %}
+
+    {% if index.path is defined -%}
+    # index files path and file name, without extension
+    # mandatory, path must be writable, extensions will be auto-appended
+    path			= {{ index.path }}
+    {% endif %}
+
+    {% if index.docinfo is defined -%}
+    # document attribute values (docinfo) storage mode
+    # optional, default is 'extern'
+    # known values are 'none', 'extern' and 'inline'
+    docinfo			= {{ index.docinfo }}
+    {% endif %}
+
+    {% if index.dict is defined -%}
+    # dictionary type, 'crc' or 'keywords'
+    # crc is faster to index when no substring/wildcards searches are needed
+    # crc with substrings might be faster to search but is much slower to index
+    # (because all substrings are pre-extracted as individual keywords)
+    # keywords is much faster to index with substrings, and index is much (3-10x) smaller
+    # keywords supports wildcards, crc does not, and never will
+    # optional, default is 'keywords'
+    dict			= {{ index.dict }}
+    {% endif %}
+
+    {% if index.mlock is defined -%}
+    # memory locking for cached data (.spa and .spi), to prevent swapping
+    # optional, default is 0 (do not mlock)
+    # requires searchd to be run from root
+    mlock			= {{ index.mlock }}
+    {% endif %}
+
+    {% if index.morphology is defined -%}
+    # a list of morphology preprocessors to apply
+    # optional, default is empty
+    #
+    # builtin preprocessors are 'none', 'stem_en', 'stem_ru', 'stem_enru',
+    # 'soundex', and 'metaphone'; additional preprocessors available from
+    # libstemmer are 'libstemmer_XXX', where XXX is algorithm code
+    # (see libstemmer_c/libstemmer/modules.txt)
+    #
+    morphology		= {{ index.morphology }}
+    {% endif %}
+
+    {% if index.index_sp is defined -%}
+    # detect and index sentence and paragraph boundaries
+    # required for the SENTENCE and PARAGRAPH operators to work
+    # optional, allowed values are 0 and 1, default is 0
+    #
+    index_sp			= {{ index.index_sp }}
+    {% endif %}
+
+    {% if index.index_zones is defined -%}
+    # index zones, delimited by HTML/XML tags
+    # a comma separated list of tags and wildcards
+    # required for the ZONE operator to work
+    # optional, default is empty string (do not index zones)
+    #
+    index_zones		= {{ index.index_zones }}
+    {% endif %}
+
+    {% if index.min_stemming_len is defined -%}
+    # minimum word length at which to enable stemming
+    # optional, default is 1 (stem everything)
+    #
+    min_stemming_len	= {{ index.min_stemming_len }}
+    {% endif %}
+
+    {% if index.stopwords is defined -%}
+    # stopword files list (space separated)
+    # optional, default is empty
+    # contents are plain text, charset_table and stemming are both applied
+    #
+    stopwords		= {{ index.stopwords }}
+    {% endif %}
+
+    {% if index.wordforms is defined -%}
+    # wordforms file, in "mapfrom > mapto" plain text format
+    # optional, default is empty
+    #
+    wordforms		= {{ index.wordforms }}
+    {% endif %}
+
+    {% if index.embedded_limit is defined -%}
+    # embedded file size limit
+    # optional, default is 16K
+    #
+    # exceptions, wordforms, and stopwords files smaller than this limit
+    # are stored in the index; otherwise, their paths and sizes are stored
+    #
+    embedded_limit		= {{ index.embedded_limit }}
+    {% endif %}
+
+    {% if index.exceptions is defined -%}
+    # tokenizing exceptions file
+    # optional, default is empty
+    #
+    # plain text, case sensitive, space insensitive in map-from part
+    # one "Map Several Words => ToASingleOne" entry per line
+    #
+    exceptions		= {{ index.exceptions }}
+    {% endif %}
+
+    {% if index.min_word_len is defined -%}
+    # minimum indexed word length
+    # default is 1 (index everything)
+    #
+    min_word_len		= {{ index.min_word_len }}
+    {% endif %}
+
+    {% if index.charset_table is defined -%}
+    # accepted characters table, with case folding rules
+    # optional, default value are latin and cyrillic characters
+    #
+    charset_table		= {{ index.charset_table }}
+    {% endif %}
+
+    {% if index.ignore_chars is defined -%}
+    # ignored characters list
+    # optional, default value is empty
+    #
+    ignore_chars		= {{ index.ignore_chars }}
+    {% endif %}
+
+    {% if index.min_prefix_len is defined -%}
+    # minimum word prefix length to index
+    # optional, default is 0 (do not index prefixes)
+    #
+    min_prefix_len		= {{ index.min_prefix_len }}
+    {% endif %}
+
+    {% if index.min_infix_len is defined -%}
+    # minimum word infix length to index
+    # optional, default is 0 (do not index infixes)
+    #
+    min_infix_len		= {{ index.min_infix_len }}
+    {% endif %}
+
+    {% if index.max_substring_len is defined -%}
+    # maximum substring (prefix or infix) length to index
+    # optional, default is 0 (do not limit substring length)
+    #
+    max_substring_len	= {{ index.max_substring_len }}
+    {% endif %}
+
+    {% if (index.prefix_fields is defined) or (index.infix_fields is defined) -%}
+    # list of fields to limit prefix/infix indexing to
+    # optional, default value is empty (index all fields in prefix/infix mode)
+    #
+    {% endif %}
+    {% if index.prefix_fields is defined -%}
+    {% for prefix_fields in index.prefix_fields -%}
+    prefix_fields		= {{ prefix_fields }}
+    {% endfor -%}
+    {% endif -%}
+    {% if index.infix_fields is defined -%}
+    {% for infix_fields in index.infix_fields -%}
+    infix_fields		= {{ infix_fields }}
+    {% endfor -%}
+    {% endif %}
+
+    {% if index.ngram_len is defined -%}
+    # n-gram length to index, for CJK indexing
+    # only supports 0 and 1 for now, other lengths to be implemented
+    # optional, default is 0 (disable n-grams)
+    #
+    ngram_len		= {{ index.ngram_len }}
+    {% endif %}
+
+    {% if index.ngram_chars is defined -%}
+    # n-gram characters list, for CJK indexing
+    # optional, default is empty
+    #
+    ngram_chars		= {{ index.ngram_chars }}
+    {% endif %}
+
+    {% if index.phrase_boundary is defined -%}
+    # phrase boundary characters list
+    # optional, default is empty
+    #
+    phrase_boundary		= {{ index.phrase_boundary }}
+    {% endif %}
+
+    {% if index.phrase_boundary_step is defined -%}
+    # phrase boundary word position increment
+    # optional, default is 0
+    #
+    phrase_boundary_step	= {{ index.phrase_boundary_step }}
+    {% endif %}
+
+    {% if index.html_strip is defined -%}
+    # whether to strip HTML tags from incoming documents
+    # known values are 0 (do not strip) and 1 (do strip)
+    # optional, default is 0
+    html_strip		= {{ index.html_strip }}
+    {% endif %}
+
+    {% if index.html_index_attrs is defined -%}
+    # what HTML attributes to index if stripping HTML
+    # optional, default is empty (do not index anything)
+    #
+    html_index_attrs	= {{ index.html_index_attrs }}
+    {% endif %}
+
+    {% if index.html_remove_elements is defined -%}
+    # what HTML elements contents to strip
+    # optional, default is empty (do not strip element contents)
+    #
+    html_remove_elements	= {{ index.html_remove_elements }}
+    {% endif %}
+
+    {% if index.preopen is defined -%}
+    # whether to preopen index data files on startup
+    # optional, default is 0 (do not preopen), searchd-only
+    #
+    preopen			= {{ index.preopen }}
+    {% endif %}
+
+    {% if index.inplace_enable is defined -%}
+    # whether to enable in-place inversion (2x less disk, 90-95% speed)
+    # optional, default is 0 (use separate temporary files), indexer-only
+    #
+    inplace_enable		= {{ index.inplace_enable }}
+    {% endif %}
+
+    {% if (index.inplace_hit_gap is defined) or
+          (index.inplace_docinfo_gap is defined) or
+          (index.inplace_reloc_factor is defined) or
+          (index.inplace_write_factor is defined) -%}
+    # in-place fine-tuning options
+    # optional, defaults are listed below
+    #
+    {% endif -%}
+    {% if index.inplace_hit_gap is defined -%}
+    inplace_hit_gap		= {{ index.inplace_hit_gap }}
+    {% endif -%}
+    {% if index.inplace_docinfo_gap is defined -%}
+    inplace_docinfo_gap	= {{ index.inplace_docinfo_gap }}
+    {% endif -%}
+    {% if index.inplace_reloc_factor is defined -%}
+    inplace_reloc_factor	= {{ index.inplace_reloc_factor }}
+    {% endif -%}
+    {% if index.inplace_write_factor is defined -%}
+    inplace_write_factor	= {{ index.inplace_write_factor }}
+    {% endif -%}
+
+    {% if index.index_exact_words is defined -%}
+    # whether to index original keywords along with stemmed versions
+    # enables "=exactform" operator to work
+    # optional, default is 0
+    #
+    index_exact_words	= {{ index.index_exact_words }}
+    {% endif %}
+
+    {% if index.overshort_step is defined -%}
+    # position increment on overshort (less that min_word_len) words
+    # optional, allowed values are 0 and 1, default is 1
+    #
+    overshort_step		= {{ index.overshort_step }}
+    {% endif %}
+
+    {% if index.stopword_step is defined -%}
+    # position increment on stopword
+    # optional, allowed values are 0 and 1, default is 1
+    #
+    stopword_step		= {{ index.stopword_step }}
+    {% endif %}
+
+    {% if index.hitless_words is defined -%}
+    # hitless words list
+    # positions for these keywords will not be stored in the index
+    # optional, allowed values are 'all', or a list file name
+    #
+    hitless_words		= {{ index.hitless_words }}
+    {% endif %}
+
+    {% if index.expand_keywords is defined -%}
+    # expand keywords with exact forms and/or stars when searching fit indexes
+    # search-time only, does not affect indexing, can be 0 or 1
+    # optional, default is 0 (do not expand keywords)
+    #
+    expand_keywords		= {{ index.expand_keywords }}
+    {% endif %}
+
+    {% if index.blend_chars is defined -%}
+    # blended characters list
+    # blended chars are indexed both as separators and valid characters
+    # for instance, AT&T will results in 3 tokens ("at", "t", and "at&t")
+    # optional, default is empty
+    #
+    blend_chars		= {{ index.blend_chars }}
+    {% endif %}
+
+    {% if index.blend_mode is defined -%}
+    # blended token indexing mode
+    # a comma separated list of blended token indexing variants
+    # known variants are trim_none, trim_head, trim_tail, trim_both, skip_pure
+    # optional, default is trim_none
+    #
+    blend_mode		= {{ index.blend_mode }}
+    {% endif %}
+
+    {% if index.bigram_freq_words is defined -%}
+    # list of the words considered frequent with respect to bigram indexing
+    # optional, default is empty
+    #
+    bigram_freq_words	= {{ index.bigram_freq_words }}
+    {% endif %}
+
+    {% if index.bigram_index is defined -%}
+    # bigram indexing mode
+    # known values are none, all, first_freq, both_freq
+    # option, default is none (do not index bigrams)
+    #
+    bigram_index		= {{ index.bigram_index }}
+    {% endif %}
+
+    {% if index.index_field_lengths is defined -%}
+    # index per-document and average per-index field lengths, in tokens
+    # required for the BM25A(), BM25F() in expression ranker
+    # optional, default is 0 (do not index field lengths)
+    #
+    index_field_lengths	= {{ index.index_field_lengths }}
+    {% endif %}
+
+    {% if index.regexp_filter is defined -%}
+    # regular expressions (regexps) to filter the fields and queries with
+    # gets applied to data source fields when indexing
+    # gets applied to search queries when searching
+    # multi-value, optional, default is empty list of regexps
+    #
+    {% for regexp_filter in index.regexp_filter -%}
+    regexp_filter		= {{ regexp_filter }}
+    {% endfor -%}
+    {% endif %}
+
+    {% if index.stopwords_unstemmed is defined -%}
+    # whether to apply stopwords before or after stemming
+    # optional, default is 0 (apply stopwords after stemming)
+    #
+    stopwords_unstemmed	= {{ index.stopwords_unstemmed }}
+    {% endif %}
+
+    {% if index.global_idf is defined -%}
+    # path to a global (cluster-wide) keyword IDFs file
+    # optional, default is empty (use local IDFs)
+    #
+    global_idf		= {{ index.global_idf }}
+    {% endif -%}
+
+    {% if index.ondisk_attrs is defined -%}
+    # allows for fine-grain control over how attributes are loaded into memory
+    # when using indexes with external storage
+    # this option also affects RT indexes
+    # default value 0 (disabled)
+    #
+    ondisk_attrs	= {{ index.ondisk_attrs }}
+    {% endif -%}
+    {% endif %}
+
+    {% if (index.type == 'distributed') or (index.parent is defined) -%}
+    #####################################################################
+    ## Distributed settings
+    #####################################################################
+
+    {% if index.local is defined -%}
+    # local index to be searched
+    # there can be many local indexes configured
+    #
+    {% for local in index.local -%}
+    local		= {{ local }}
+    {% endfor -%}
+    {% endif %}
+
+    {% if index.agent is defined -%}
+    # remote agent
+    # multiple remote agents may be specified
+    # syntax for TCP connections is 'hostname:port:index1,[index2[,...]]'
+    # syntax for local UNIX connections is '/path/to/socket:index1,[index2[,...]]'
+    #
+    # remote agent mirrors groups, aka mirrors, aka HA agents
+    # defines 2 or more interchangeable mirrors for a given index part
+    #
+    {% for agent in index.agent -%}
+    agent		= {{ agent }}
+    {% endfor -%}
+    {% endif %}
+
+    {% if index.agent_persistent is defined -%}
+    # persistenly connected remote agent
+    # multi-value, default is empty
+    # reduces connect() pressure, requires that workers IS threads
+    #
+    {% for agent_persistent in index.agent_persistent -%}
+    agent_persistent		= {{ agent_persistent }}
+    {% endfor -%}
+    {% endif %}
+
+    {% if index.agent_blackhole is defined -%}
+    # blackhole remote agent, for debugging/testing
+    # multi-value, default is empty
+    # network errors and search results will be ignored
+    #
+    {% for agent_blackhole in index.agent_blackhole -%}
+    agent_blackhole		= {{ agent_blackhole }}
+    {% endfor -%}
+    {% endif %}
+
+    {% if index.agent_connect_timeout is defined -%}
+    # remote agent connection timeout, milliseconds
+    # optional, default is 1000 ms, ie. 1 sec
+    agent_connect_timeout	= {{ index.agent_connect_timeout }}
+    {% endif %}
+
+    {% if index.agent_query_timeout is defined -%}
+    # remote agent query timeout, milliseconds
+    # optional, default is 3000 ms, ie. 3 sec
+    agent_query_timeout		= {{ index.agent_query_timeout }}
+    {% endif %}
+
+    {% if index.ha_strategy is defined -%}
+    # HA mirror agent strategy
+    # optional, defaults to ??? (random mirror)
+    # know values are nodeads, noerrors, roundrobin, nodeadstm, noerrorstm
+    #
+    ha_strategy				= {{ index.ha_strategy }}
+    {% endif %}
+
+    {% if index.rlp_context is defined -%}
+    # path to RLP context file
+    # optional, defaut is empty
+    #
+    rlp_context = {{ index.rlp_context }}
+    {% endif %}
+    {% endif %}
+
+    {% if (index.type == 'rt') or (index.parent is defined) -%}
+    #####################################################################
+    ## Real time settings
+    #####################################################################
+
+    {% if index.path is defined -%}
+    # index files path and file name, without extension
+    # mandatory, path must be writable, extensions will be auto-appended
+    path			= {{ index.path }}
+    {% endif %}
+
+    {% if index.rt_mem_limit is defined -%}
+    # RAM chunk size limit
+    # RT index will keep at most this much data in RAM, then flush to disk
+    # optional, default is 128M
+    #
+    rt_mem_limit		= {{ index.rt_mem_limit }}
+    {% endif %}
+
+    {% if index.rt_field is defined -%}
+    # full-text field declaration
+    # multi-value, mandatory
+    {% for rt_field in index.rt_field -%}
+    rt_field		= {{ rt_field }}
+    {% endfor -%}
+    {% endif %}
+
+    {% if index.rt_attr_uint is defined -%}
+    # unsigned integer attribute declaration
+    # multi-value (an arbitrary number of attributes is allowed), optional
+    # declares an unsigned 32-bit attribute
+    {% for rt_attr_uint in index.rt_attr_uint -%}
+    rt_attr_uint		= {{ rt_attr_uint }}
+    {% endfor -%}
+    {% endif %}
+
+    {% if (index.rt_attr_bool is defined) or
+          (index.rt_attr_bigint is defined) or
+          (index.rt_attr_float is defined) or
+          (index.rt_attr_timestamp is defined) or
+          (index.rt_attr_string is defined) or
+          (index.rt_attr_multi is defined) or
+          (index.rt_attr_multi_64 is defined) or
+          (index.rt_attr_json is defined) -%}
+    # RT indexes currently support the following attribute types:
+    # uint, bigint, float, timestamp, string, mva, mva64, json
+    #
+    {% endif -%}
+    {% if index.rt_attr_bool is defined -%}
+    {% for rt_attr_bool in index.rt_attr_bool -%}
+    rt_attr_bool		= {{ rt_attr_bool }}
+    {% endfor -%}
+    {% endif -%}
+    {% if index.rt_attr_bigint is defined -%}
+    {% for rt_attr_bigint in index.rt_attr_bigint -%}
+    rt_attr_bigint		= {{ rt_attr_bigint }}
+    {% endfor -%}
+    {% endif -%}
+    {% if index.rt_attr_float is defined -%}
+    {% for rt_attr_float in index.rt_attr_float -%}
+    rt_attr_float		= {{ rt_attr_float }}
+    {% endfor -%}
+    {% endif -%}
+    {% if index.rt_attr_multi is defined -%}
+    {% for rt_attr_multi in index.rt_attr_multi -%}
+    rt_attr_multi		= {{ rt_attr_multi }}
+    {% endfor -%}
+    {% endif -%}
+    {% if index.rt_attr_multi_64 is defined -%}
+    {% for rt_attr_multi_64 in index.rt_attr_multi_64 -%}
+    rt_attr_multi_64		= {{ rt_attr_multi_64 }}
+    {% endfor -%}
+    {% endif -%}
+    {% if index.rt_attr_timestamp is defined -%}
+    {% for rt_attr_timestamp in index.rt_attr_timestamp -%}
+    rt_attr_timestamp		= {{ rt_attr_timestamp }}
+    {% endfor -%}
+    {% endif -%}
+    {% if index.rt_attr_string is defined -%}
+    {% for rt_attr_string in index.rt_attr_string -%}
+    rt_attr_string		= {{ rt_attr_string }}
+    {% endfor -%}
+    {% endif -%}
+    {% if index.rt_attr_json is defined -%}
+    {% for rt_attr_json in index.rt_attr_json -%}
+    rt_attr_json		= {{ rt_attr_json }}
+    {% endfor -%}
+    {% endif -%}
+    {% endif %}
+}
+{% endif -%}
+{% endfor -%}
+{% endif %}
+
+{% if (inherited_indices is defined) and inherited_indices -%}
+# inherited index
+#
+# all the parameters are copied from the parent index,
+# and may then be overridden in this index definition
+{% for inherited_index in inherited_indices -%}
+{% if (inherited_index.parent is defined) and (inherited_index.name is defined) -%}
+index {{ inherited_index.parent }} : {{ inherited_index .name }}
+{
+    {% set parent_index_type = indices | selectattr("name", "equalto", inherited_index.parent) | map(attribute='type') | list %}
+
+    {% if inherited_index.type is defined -%}
+    # index type
+    # optional, default is 'plain'
+    # known values are 'plain', 'distributed', 'rt' and 'template'
+    type			= {{ inherited_index.type }}
+    {% endif %}
+
+    {% if (parent_index_type[0] == 'plain') -%}
+    #####################################################################
+    ## Plain settings (for 'plain' type)
+    #####################################################################
+
+    {% if inherited_index.source is defined -%}
+    # document source(s) to index
+    # multi-value, mandatory
+    # document IDs must be globally unique across all sources
+    source			= {{ inherited_index.source }}
+    {% endif %}
+
+    {% if inherited_index.path is defined -%}
+    # index files path and file name, without extension
+    # mandatory, path must be writable, extensions will be auto-appended
+    path			= {{ inherited_index.path }}
+    {% endif %}
+
+    {% if inherited_index.docinfo is defined -%}
+    # document attribute values (docinfo) storage mode
+    # optional, default is 'extern'
+    # known values are 'none', 'extern' and 'inline'
+    docinfo			= {{ inherited_index.docinfo }}
+    {% endif %}
+
+    {% if inherited_index.dict is defined -%}
+    # dictionary type, 'crc' or 'keywords'
+    # crc is faster to index when no substring/wildcards searches are needed
+    # crc with substrings might be faster to search but is much slower to index
+    # (because all substrings are pre-extracted as individual keywords)
+    # keywords is much faster to index with substrings, and index is much (3-10x) smaller
+    # keywords supports wildcards, crc does not, and never will
+    # optional, default is 'keywords'
+    dict			= {{ inherited_index.dict }}
+    {% endif %}
+
+    {% if inherited_index.mlock is defined -%}
+    # memory locking for cached data (.spa and .spi), to prevent swapping
+    # optional, default is 0 (do not mlock)
+    # requires searchd to be run from root
+    mlock			= {{ inherited_index.mlock }}
+    {% endif %}
+
+    {% if inherited_index.morphology is defined -%}
+    # a list of morphology preprocessors to apply
+    # optional, default is empty
+    #
+    # builtin preprocessors are 'none', 'stem_en', 'stem_ru', 'stem_enru',
+    # 'soundex', and 'metaphone'; additional preprocessors available from
+    # libstemmer are 'libstemmer_XXX', where XXX is algorithm code
+    # (see libstemmer_c/libstemmer/modules.txt)
+    #
+    morphology		= {{ inherited_index.morphology }}
+    {% endif %}
+
+    {% if inherited_index.index_sp is defined -%}
+    # detect and index sentence and paragraph boundaries
+    # required for the SENTENCE and PARAGRAPH operators to work
+    # optional, allowed values are 0 and 1, default is 0
+    #
+    index_sp			= {{ inherited_index.index_sp }}
+    {% endif %}
+
+    {% if inherited_index.index_zones is defined -%}
+    # index zones, delimited by HTML/XML tags
+    # a comma separated list of tags and wildcards
+    # required for the ZONE operator to work
+    # optional, default is empty string (do not index zones)
+    #
+    index_zones		= {{ inherited_index.index_zones }}
+    {% endif %}
+
+    {% if inherited_index.min_stemming_len is defined -%}
+    # minimum word length at which to enable stemming
+    # optional, default is 1 (stem everything)
+    #
+    min_stemming_len	= {{ inherited_index.min_stemming_len }}
+    {% endif %}
+
+    {% if inherited_index.stopwords is defined -%}
+    # stopword files list (space separated)
+    # optional, default is empty
+    # contents are plain text, charset_table and stemming are both applied
+    #
+    stopwords		= {{ inherited_index.stopwords }}
+    {% endif %}
+
+    {% if inherited_index.wordforms is defined -%}
+    # wordforms file, in "mapfrom > mapto" plain text format
+    # optional, default is empty
+    #
+    wordforms		= {{ inherited_index.wordforms }}
+    {% endif %}
+
+    {% if inherited_index.embedded_limit is defined -%}
+    # embedded file size limit
+    # optional, default is 16K
+    #
+    # exceptions, wordforms, and stopwords files smaller than this limit
+    # are stored in the index; otherwise, their paths and sizes are stored
+    #
+    embedded_limit		= {{ inherited_index.embedded_limit }}
+    {% endif %}
+
+    {% if inherited_index.exceptions is defined -%}
+    # tokenizing exceptions file
+    # optional, default is empty
+    #
+    # plain text, case sensitive, space insensitive in map-from part
+    # one "Map Several Words => ToASingleOne" entry per line
+    #
+    exceptions		= {{ inherited_index.exceptions }}
+    {% endif %}
+
+    {% if inherited_index.min_word_len is defined -%}
+    # minimum indexed word length
+    # default is 1 (index everything)
+    #
+    min_word_len		= {{ inherited_index.min_word_len }}
+    {% endif %}
+
+    {% if inherited_index.charset_table is defined -%}
+    # accepted characters table, with case folding rules
+    # optional, default value are latin and cyrillic characters
+    #
+    charset_table		= {{ inherited_index.charset_table }}
+    {% endif %}
+
+    {% if inherited_index.ignore_chars is defined -%}
+    # ignored characters list
+    # optional, default value is empty
+    #
+    ignore_chars		= {{ inherited_index.ignore_chars }}
+    {% endif %}
+
+    {% if inherited_index.min_prefix_len is defined -%}
+    # minimum word prefix length to index
+    # optional, default is 0 (do not index prefixes)
+    #
+    min_prefix_len		= {{ inherited_index.min_prefix_len }}
+    {% endif %}
+
+    {% if inherited_index.min_infix_len is defined -%}
+    # minimum word infix length to index
+    # optional, default is 0 (do not index infixes)
+    #
+    min_infix_len		= {{ inherited_index.min_infix_len }}
+    {% endif %}
+
+    {% if inherited_index.max_substring_len is defined -%}
+    # maximum substring (prefix or infix) length to index
+    # optional, default is 0 (do not limit substring length)
+    #
+    max_substring_len	= {{ inherited_index.max_substring_len }}
+    {% endif %}
+
+    {% if (inherited_index.prefix_fields is defined) or (inherited_index.infix_fields is defined) -%}
+    # list of fields to limit prefix/infix indexing to
+    # optional, default value is empty (index all fields in prefix/infix mode)
+    #
+    {% endif %}
+    {% if inherited_index.prefix_fields is defined -%}
+    {% for prefix_fields in inherited_index.prefix_fields -%}
+    prefix_fields		= {{ prefix_fields }}
+    {% endfor -%}
+    {% endif -%}
+    {% if inherited_index.infix_fields is defined -%}
+    {% for infix_fields in inherited_index.infix_fields -%}
+    infix_fields		= {{ infix_fields }}
+    {% endfor -%}
+    {% endif %}
+
+    {% if inherited_index.ngram_len is defined -%}
+    # n-gram length to index, for CJK indexing
+    # only supports 0 and 1 for now, other lengths to be implemented
+    # optional, default is 0 (disable n-grams)
+    #
+    ngram_len		= {{ inherited_index.ngram_len }}
+    {% endif %}
+
+    {% if inherited_index.ngram_chars is defined -%}
+    # n-gram characters list, for CJK indexing
+    # optional, default is empty
+    #
+    ngram_chars		= {{ inherited_index.ngram_chars }}
+    {% endif %}
+
+    {% if inherited_index.phrase_boundary is defined -%}
+    # phrase boundary characters list
+    # optional, default is empty
+    #
+    phrase_boundary		= {{ inherited_index.phrase_boundary }}
+    {% endif %}
+
+    {% if inherited_index.phrase_boundary_step is defined -%}
+    # phrase boundary word position increment
+    # optional, default is 0
+    #
+    phrase_boundary_step	= {{ inherited_index.phrase_boundary_step }}
+    {% endif %}
+
+    {% if inherited_index.html_strip is defined -%}
+    # whether to strip HTML tags from incoming documents
+    # known values are 0 (do not strip) and 1 (do strip)
+    # optional, default is 0
+    html_strip		= {{ inherited_index.html_strip }}
+    {% endif %}
+
+    {% if inherited_index.html_index_attrs is defined -%}
+    # what HTML attributes to index if stripping HTML
+    # optional, default is empty (do not index anything)
+    #
+    html_index_attrs	= {{ inherited_index.html_index_attrs }}
+    {% endif %}
+
+    {% if inherited_index.html_remove_elements is defined -%}
+    # what HTML elements contents to strip
+    # optional, default is empty (do not strip element contents)
+    #
+    html_remove_elements	= {{ inherited_index.html_remove_elements }}
+    {% endif %}
+
+    {% if inherited_index.preopen is defined -%}
+    # whether to preopen index data files on startup
+    # optional, default is 0 (do not preopen), searchd-only
+    #
+    preopen			= {{ inherited_index.preopen }}
+    {% endif %}
+
+    {% if inherited_index.inplace_enable is defined -%}
+    # whether to enable in-place inversion (2x less disk, 90-95% speed)
+    # optional, default is 0 (use separate temporary files), indexer-only
+    #
+    inplace_enable		= {{ inherited_index.inplace_enable }}
+    {% endif %}
+
+    {% if (inherited_index.inplace_hit_gap is defined) or
+          (inherited_index.inplace_docinfo_gap is defined) or
+          (inherited_index.inplace_reloc_factor is defined) or
+          (inherited_index.inplace_write_factor is defined) -%}
+    # in-place fine-tuning options
+    # optional, defaults are listed below
+    #
+    {% endif -%}
+    {% if inherited_index.inplace_hit_gap is defined -%}
+    inplace_hit_gap		= {{ inherited_index.inplace_hit_gap }}
+    {% endif -%}
+    {% if inherited_index.inplace_docinfo_gap is defined -%}
+    inplace_docinfo_gap	= {{ inherited_index.inplace_docinfo_gap }}
+    {% endif -%}
+    {% if inherited_index.inplace_reloc_factor is defined -%}
+    inplace_reloc_factor	= {{ inherited_index.inplace_reloc_factor }}
+    {% endif -%}
+    {% if inherited_index.inplace_write_factor is defined -%}
+    inplace_write_factor	= {{ inherited_index.inplace_write_factor }}
+    {% endif -%}
+
+    {% if inherited_index.index_exact_words is defined -%}
+    # whether to index original keywords along with stemmed versions
+    # enables "=exactform" operator to work
+    # optional, default is 0
+    #
+    index_exact_words	= {{ inherited_index.index_exact_words }}
+    {% endif %}
+
+    {% if inherited_index.overshort_step is defined -%}
+    # position increment on overshort (less that min_word_len) words
+    # optional, allowed values are 0 and 1, default is 1
+    #
+    overshort_step		= {{ inherited_index.overshort_step }}
+    {% endif %}
+
+    {% if inherited_index.stopword_step is defined -%}
+    # position increment on stopword
+    # optional, allowed values are 0 and 1, default is 1
+    #
+    stopword_step		= {{ inherited_index.stopword_step }}
+    {% endif %}
+
+    {% if inherited_index.hitless_words is defined -%}
+    # hitless words list
+    # positions for these keywords will not be stored in the index
+    # optional, allowed values are 'all', or a list file name
+    #
+    hitless_words		= {{ inherited_index.hitless_words }}
+    {% endif %}
+
+    {% if inherited_index.expand_keywords is defined -%}
+    # expand keywords with exact forms and/or stars when searching fit indexes
+    # search-time only, does not affect indexing, can be 0 or 1
+    # optional, default is 0 (do not expand keywords)
+    #
+    expand_keywords		= {{ inherited_index.expand_keywords }}
+    {% endif %}
+
+    {% if inherited_index.blend_chars is defined -%}
+    # blended characters list
+    # blended chars are indexed both as separators and valid characters
+    # for instance, AT&T will results in 3 tokens ("at", "t", and "at&t")
+    # optional, default is empty
+    #
+    blend_chars		= {{ inherited_index.blend_chars }}
+    {% endif %}
+
+    {% if inherited_index.blend_mode is defined -%}
+    # blended token indexing mode
+    # a comma separated list of blended token indexing variants
+    # known variants are trim_none, trim_head, trim_tail, trim_both, skip_pure
+    # optional, default is trim_none
+    #
+    blend_mode		= {{ inherited_index.blend_mode }}
+    {% endif %}
+
+    {% if inherited_index.bigram_freq_words is defined -%}
+    # list of the words considered frequent with respect to bigram indexing
+    # optional, default is empty
+    #
+    bigram_freq_words	= {{ inherited_index.bigram_freq_words }}
+    {% endif %}
+
+    {% if inherited_index.bigram_index is defined -%}
+    # bigram indexing mode
+    # known values are none, all, first_freq, both_freq
+    # option, default is none (do not index bigrams)
+    #
+    bigram_index		= {{ inherited_index.bigram_index }}
+    {% endif %}
+
+    {% if inherited_index.index_field_lengths is defined -%}
+    # index per-document and average per-index field lengths, in tokens
+    # required for the BM25A(), BM25F() in expression ranker
+    # optional, default is 0 (do not index field lengths)
+    #
+    index_field_lengths	= {{ inherited_index.index_field_lengths }}
+    {% endif %}
+
+    {% if inherited_index.regexp_filter is defined -%}
+    # regular expressions (regexps) to filter the fields and queries with
+    # gets applied to data source fields when indexing
+    # gets applied to search queries when searching
+    # multi-value, optional, default is empty list of regexps
+    #
+    {% for regexp_filter in inherited_index.regexp_filter -%}
+    regexp_filter		= {{ regexp_filter }}
+    {% endfor -%}
+    {% endif %}
+
+    {% if inherited_index.stopwords_unstemmed is defined -%}
+    # whether to apply stopwords before or after stemming
+    # optional, default is 0 (apply stopwords after stemming)
+    #
+    stopwords_unstemmed	= {{ inherited_index.stopwords_unstemmed }}
+    {% endif %}
+
+    {% if inherited_index.global_idf is defined -%}
+    # path to a global (cluster-wide) keyword IDFs file
+    # optional, default is empty (use local IDFs)
+    #
+    global_idf		= {{ inherited_index.global_idf }}
+    {% endif -%}
+
+    {% if inherited_index.ondisk_attrs is defined -%}
+    # allows for fine-grain control over how attributes are loaded into memory
+    # when using indexes with external storage
+    # this option also affects RT indexes
+    # default value 0 (disabled)
+    #
+    ondisk_attrs	= {{ inherited_index.ondisk_attrs }}
+    {% endif -%}
+    {% endif %}
+
+    {% if (parent_index_type[0] == 'distributed') -%}
+    #####################################################################
+    ## Distributed settings
+    #####################################################################
+
+    {% if inherited_index.local is defined -%}
+    # local index to be searched
+    # there can be many local indexes configured
+    #
+    {% for local in inherited_index.local -%}
+    local		= {{ local }}
+    {% endfor -%}
+    {% endif %}
+
+    {% if inherited_index.agent is defined -%}
+    # remote agent
+    # multiple remote agents may be specified
+    # syntax for TCP connections is 'hostname:port:index1,[index2[,...]]'
+    # syntax for local UNIX connections is '/path/to/socket:index1,[index2[,...]]'
+    #
+    # remote agent mirrors groups, aka mirrors, aka HA agents
+    # defines 2 or more interchangeable mirrors for a given index part
+    #
+    {% for agent in inherited_index.agent -%}
+    agent		= {{ agent }}
+    {% endfor -%}
+    {% endif %}
+
+    {% if inherited_index.agent_persistent is defined -%}
+    # persistenly connected remote agent
+    # multi-value, default is empty
+    # reduces connect() pressure, requires that workers IS threads
+    #
+    {% for agent_persistent in inherited_index.agent_persistent -%}
+    agent_persistent		= {{ agent_persistent }}
+    {% endfor -%}
+    {% endif %}
+
+    {% if inherited_index.agent_blackhole is defined -%}
+    # blackhole remote agent, for debugging/testing
+    # multi-value, default is empty
+    # network errors and search results will be ignored
+    #
+    {% for agent_blackhole in inherited_index.agent_blackhole -%}
+    agent_blackhole		= {{ agent_blackhole }}
+    {% endfor -%}
+    {% endif %}
+
+    {% if inherited_index.agent_connect_timeout is defined -%}
+    # remote agent connection timeout, milliseconds
+    # optional, default is 1000 ms, ie. 1 sec
+    agent_connect_timeout	= {{ inherited_index.agent_connect_timeout }}
+    {% endif %}
+
+    {% if inherited_index.agent_query_timeout is defined -%}
+    # remote agent query timeout, milliseconds
+    # optional, default is 3000 ms, ie. 3 sec
+    agent_query_timeout		= {{ inherited_index.agent_query_timeout }}
+    {% endif %}
+
+    {% if inherited_index.ha_strategy is defined -%}
+    # HA mirror agent strategy
+    # optional, defaults to ??? (random mirror)
+    # know values are nodeads, noerrors, roundrobin, nodeadstm, noerrorstm
+    #
+    ha_strategy				= {{ inherited_index.ha_strategy }}
+    {% endif %}
+
+    {% if inherited_index.rlp_context is defined -%}
+    # path to RLP context file
+    # optional, defaut is empty
+    #
+    rlp_context = {{ inherited_index.rlp_context }}
+    {% endif %}
+    {% endif %}
+
+    {% if (parent_index_type[0] == 'rt') -%}
+    #####################################################################
+    ## Real time settings
+    #####################################################################
+
+    {% if inherited_index.path is defined -%}
+    # index files path and file name, without extension
+    # mandatory, path must be writable, extensions will be auto-appended
+    path			= {{ inherited_index.path }}
+    {% endif %}
+
+    {% if inherited_index.rt_mem_limit is defined -%}
+    # RAM chunk size limit
+    # RT index will keep at most this much data in RAM, then flush to disk
+    # optional, default is 128M
+    #
+    rt_mem_limit		= {{ inherited_index.rt_mem_limit }}
+    {% endif %}
+
+    {% if inherited_index.rt_field is defined -%}
+    # full-text field declaration
+    # multi-value, mandatory
+    {% for rt_field in inherited_index.rt_field -%}
+    rt_field		= {{ rt_field }}
+    {% endfor -%}
+    {% endif %}
+
+    {% if inherited_index.rt_attr_uint is defined -%}
+    # unsigned integer attribute declaration
+    # multi-value (an arbitrary number of attributes is allowed), optional
+    # declares an unsigned 32-bit attribute
+    {% for rt_attr_uint in inherited_index.rt_attr_uint -%}
+    rt_attr_uint		= {{ rt_attr_uint }}
+    {% endfor -%}
+    {% endif %}
+
+    {% if (inherited_index.rt_attr_bool is defined) or
+          (inherited_index.rt_attr_bigint is defined) or
+          (inherited_index.rt_attr_float is defined) or
+          (inherited_index.rt_attr_timestamp is defined) or
+          (inherited_index.rt_attr_string is defined) or
+          (inherited_index.rt_attr_multi is defined) or
+          (inherited_index.rt_attr_multi_64 is defined) or
+          (inherited_index.rt_attr_json is defined) -%}
+    # RT indexes currently support the following attribute types:
+    # uint, bigint, float, timestamp, string, mva, mva64, json
+    #
+    {% endif -%}
+    {% if inherited_index.rt_attr_bool is defined -%}
+    {% for rt_attr_bool in inherited_index.rt_attr_bool -%}
+    rt_attr_bool		= {{ rt_attr_bool }}
+    {% endfor -%}
+    {% endif -%}
+    {% if inherited_index.rt_attr_bigint is defined -%}
+    {% for rt_attr_bigint in inherited_index.rt_attr_bigint -%}
+    rt_attr_bigint		= {{ rt_attr_bigint }}
+    {% endfor -%}
+    {% endif -%}
+    {% if inherited_index.rt_attr_float is defined -%}
+    {% for rt_attr_float in inherited_index.rt_attr_float -%}
+    rt_attr_float		= {{ rt_attr_float }}
+    {% endfor -%}
+    {% endif -%}
+    {% if inherited_index.rt_attr_multi is defined -%}
+    {% for rt_attr_multi in inherited_index.rt_attr_multi -%}
+    rt_attr_multi		= {{ rt_attr_multi }}
+    {% endfor -%}
+    {% endif -%}
+    {% if inherited_index.rt_attr_multi_64 is defined -%}
+    {% for rt_attr_multi_64 in inherited_index.rt_attr_multi_64 -%}
+    rt_attr_multi_64		= {{ rt_attr_multi_64 }}
+    {% endfor -%}
+    {% endif -%}
+    {% if inherited_index.rt_attr_timestamp is defined -%}
+    {% for rt_attr_timestamp in inherited_index.rt_attr_timestamp -%}
+    rt_attr_timestamp		= {{ rt_attr_timestamp }}
+    {% endfor -%}
+    {% endif -%}
+    {% if inherited_index.rt_attr_string is defined -%}
+    {% for rt_attr_string in inherited_index.rt_attr_string -%}
+    rt_attr_string		= {{ rt_attr_string }}
+    {% endfor -%}
+    {% endif -%}
+    {% if inherited_index.rt_attr_json is defined -%}
+    {% for rt_attr_json in inherited_index.rt_attr_json -%}
+    rt_attr_json		= {{ rt_attr_json }}
+    {% endfor -%}
+    {% endif -%}
+    {% endif %}
+
+}
+{% endif -%}
+{% endfor -%}
+{% endif %}
+
+#############################################################################
+## indexer settings
+#############################################################################
+
+indexer
+{
+    {% if indexer.mem_limit is defined -%}
+	# memory limit, in bytes, kiloytes (16384K) or megabytes (256M)
+	# optional, default is 128M, max is 2047M, recommended is 256M to 1024M
+	mem_limit		= {{ indexer.mem_limit }}
+    {% endif %}
+
+    {% if indexer.max_iops is defined -%}
+	# maximum IO calls per second (for I/O throttling)
+	# optional, default is 0 (unlimited)
+	#
+	max_iops		= {{ indexer.max_iops }}
+    {% endif %}
+
+    {% if indexer.max_iosize is defined -%}
+	# maximum IO call size, bytes (for I/O throttling)
+	# optional, default is 0 (unlimited)
+	#
+	max_iosize		= {{ indexer.max_iosize }}
+    {% endif %}
+
+    {% if indexer.max_xmlpipe2_field is defined -%}
+	# maximum xmlpipe2 field length, bytes
+	# optional, default is 2M
+	#
+	max_xmlpipe2_field	= {{ indexer.max_xmlpipe2_field }}
+    {% endif %}
+
+    {% if indexer.write_buffer is defined -%}
+	# write buffer size, bytes
+	# several (currently up to 4) buffers will be allocated
+	# write buffers are allocated in addition to mem_limit
+	# optional, default is 1M
+	#
+	write_buffer		= {{ indexer.write_buffer }}
+    {% endif %}
+
+    {% if indexer.max_file_field_buffer is defined -%}
+	# maximum file field adaptive buffer size
+	# optional, default is 8M, minimum is 1M
+	#
+	max_file_field_buffer	= {{ indexer.max_file_field_buffer }}
+    {% endif %}
+
+    {% if indexer.on_file_field_error is defined -%}
+	# how to handle IO errors in file fields
+	# known values are 'ignore_field', 'skip_document', and 'fail_index'
+	# optional, default is 'ignore_field'
+	#
+	on_file_field_error = {{ indexer.on_file_field_error }}
+    {% endif %}
+
+    {% if indexer.lemmatizer_cache is defined -%}
+	# lemmatizer cache size
+	# improves the indexing time when the lemmatization is enabled
+	# optional, default is 256K
+	#
+	lemmatizer_cache = {{ indexer.lemmatizer_cache }}
+    {% endif %}
+}
+
+#############################################################################
+## searchd settings
+#############################################################################
+
+searchd
+{
+    {% if searchd.listen is defined -%}
+	# [hostname:]port[:protocol], or /unix/socket/path to listen on
+	# known protocols are 'sphinx' (SphinxAPI) and 'mysql41' (SphinxQL)
+	#
+	# multi-value, multiple listen points are allowed
+	# optional, defaults are 9312:sphinx and 9306:mysql41, as below
+	#
+	{% for listen in searchd.listen -%}
+    listen		= {{ listen }}
+    {% endfor -%}
+	{% endif %}
+
+    {% if searchd.log is defined -%}
+	# log file, searchd run info is logged here
+	# optional, default is 'searchd.log'
+	log			= {{ searchd.log }}
+    {% endif %}
+
+    {% if searchd.query_log is defined -%}
+	# query log file, all search queries are logged here
+	# optional, default is empty (do not log queries)
+	query_log		= {{ searchd.query_log }}
+    {% endif %}
+
+    {% if searchd.query_log_format is defined -%}
+	# query log file format
+	# optional, known values are plain and sphinxql, default is plain
+	#
+	query_log_format		= {{ searchd.query_log_format }}
+    {% endif %}
+
+    {% if searchd.read_timeout is defined -%}
+	# client read timeout, seconds
+	# optional, default is 5
+	read_timeout		= {{ searchd.read_timeout }}
+    {% endif %}
+
+    {% if searchd.client_timeout is defined -%}
+	# request timeout, seconds
+	# optional, default is 5 minutes
+	client_timeout		= {{ searchd.client_timeout }}
+    {% endif %}
+
+    {% if searchd.max_children is defined -%}
+	# maximum amount of children to fork (concurrent searches to run)
+	# optional, default is 0 (unlimited)
+	max_children		= {{ searchd.max_children }}
+    {% endif %}
+
+    {% if searchd.pid_file is defined -%}
+    # PID file, searchd process ID file name
+    # mandatory
+    pid_file		= {{ searchd.pid_file }}
+    {% endif %}
+
+    {% if searchd.seamless_rotate is defined -%}
+    # seamless rotate, prevents rotate stalls if precaching huge datasets
+    # optional, default is 1
+    seamless_rotate		= {{ searchd.seamless_rotate }}
+    {% endif %}
+
+    {% if searchd.preopen_indexes is defined -%}
+	# whether to forcibly preopen all indexes on startup
+	# optional, default is 1 (preopen everything)
+	preopen_indexes		= {{ searchd.preopen_indexes }}
+    {% endif %}
+
+    {% if searchd.unlink_old is defined -%}
+	# whether to unlink .old index copies on succesful rotation.
+	# optional, default is 1 (do unlink)
+	unlink_old		= {{ searchd.unlink_old }}
+    {% endif %}
+
+    {% if searchd.attr_flush_period is defined -%}
+	# attribute updates periodic flush timeout, seconds
+	# updates will be automatically dumped to disk this frequently
+	# optional, default is 0 (disable periodic flush)
+	#
+	attr_flush_period	= {{ searchd.attr_flush_period }}
+    {% endif %}
+
+    {% if searchd.max_packet_size is defined -%}
+	# max allowed network packet size
+	# limits both query packets from clients, and responses from agents
+	# optional, default size is 8M
+	max_packet_size		= {{ searchd.max_packet_size }}
+    {% endif %}
+
+    {% if searchd.mva_updates_pool is defined -%}
+	# MVA updates pool size
+	# shared between all instances of searchd, disables attr flushes!
+	# optional, default size is 1M
+	mva_updates_pool	= {{ searchd.mva_updates_pool }}
+    {% endif %}
+
+    {% if searchd.max_filters is defined -%}
+	# max allowed per-query filter count
+	# optional, default is 256
+	max_filters		= {{ searchd.max_filters }}
+    {% endif %}
+
+    {% if searchd.max_filter_values is defined -%}
+	# max allowed per-filter values count
+	# optional, default is 4096
+	max_filter_values	= {{ searchd.max_filter_values }}
+    {% endif %}
+
+    {% if searchd.listen_backlog is defined -%}
+	# socket listen queue length
+	# optional, default is 5
+	#
+	listen_backlog		= {{ searchd.listen_backlog }}
+    {% endif %}
+
+    {% if searchd.read_buffer is defined -%}
+	# per-keyword read buffer size
+	# optional, default is 256K
+	#
+	read_buffer		= {{ searchd.read_buffer }}
+    {% endif %}
+
+    {% if searchd.read_unhinted is defined -%}
+	# unhinted read size (currently used when reading hits)
+	# optional, default is 32K
+	#
+	read_unhinted		= {{ searchd.read_unhinted }}
+    {% endif %}
+
+    {% if searchd.max_batch_queries is defined -%}
+	# max allowed per-batch query count (aka multi-query count)
+	# optional, default is 32
+	max_batch_queries	= {{ searchd.max_batch_queries }}
+    {% endif %}
+
+    {% if searchd.subtree_docs_cache is defined -%}
+	# max common subtree document cache size, per-query
+	# optional, default is 0 (disable subtree optimization)
+	#
+	subtree_docs_cache	= {{ searchd.subtree_docs_cache }}
+    {% endif %}
+
+    {% if searchd.subtree_hits_cache is defined -%}
+	# max common subtree hit cache size, per-query
+	# optional, default is 0 (disable subtree optimization)
+	#
+	subtree_hits_cache	= {{ searchd.subtree_hits_cache }}
+    {% endif %}
+
+    {% if searchd.workers is defined -%}
+	# multi-processing mode (MPM)
+	# known values are none, fork, prefork, and threads
+	# threads is required for RT backend to work
+	# optional, default is threads
+	workers			= {{ searchd.workers }}
+    {% endif %}
+
+    {% if searchd.dist_threads is defined -%}
+	# max threads to create for searching local parts of a distributed index
+	# optional, default is 0, which means disable multi-threaded searching
+	# should work with all MPMs (ie. does NOT require workers=threads)
+	#
+	dist_threads		= {{ searchd.dist_threads }}
+    {% endif %}
+
+    {% if searchd.binlog_path is defined -%}
+	# binlog files path; use empty string to disable binlog
+	# optional, default is build-time configured data directory
+	#
+	binlog_path		= {{ searchd.binlog_path }}
+    {% endif %}
+
+    {% if searchd.binlog_flush is defined -%}
+	# binlog flush/sync mode
+	# 0 means flush and sync every second
+	# 1 means flush and sync every transaction
+	# 2 means flush every transaction, sync every second
+	# optional, default is 2
+	#
+	binlog_flush		= {{ searchd.binlog_flush }}
+    {% endif %}
+
+    {% if searchd.binlog_max_log_size is defined -%}
+	# binlog per-file size limit
+	# optional, default is 128M, 0 means no limit
+	#
+	binlog_max_log_size	= {{ searchd.binlog_max_log_size }}
+    {% endif %}
+
+    {% if searchd.snippets_file_prefix is defined -%}
+	# a prefix to prepend to the local file names when creating snippets
+	# with load_files and/or load_files_scatter options
+	# optional, default is empty
+	#
+	snippets_file_prefix		= {{ searchd.snippets_file_prefix }}
+    {% endif %}
+
+    {% if searchd.collation_server is defined -%}
+	# default server-wide collation
+	# optional, default is libc_ci
+	#
+	collation_server		= {{ searchd.collation_server }}
+    {% endif %}
+
+    {% if searchd.collation_libc_locale is defined -%}
+	# server-wide locale for libc based collations
+	# optional, default is C
+	#
+	collation_libc_locale	= {{ searchd.collation_libc_locale }}
+    {% endif %}
+
+    {% if searchd.mysql_version_string is defined -%}
+	# version string returned to MySQL network protocol clients
+	# optional, default is empty (use Sphinx version)
+	#
+	mysql_version_string	= {{ searchd.mysql_version_string }}
+    {% endif %}
+
+    {% if searchd.rt_flush_period is defined -%}
+	# RT RAM chunks flush period
+	# optional, default is 0 (no periodic flush)
+	#
+	rt_flush_period		= {{ searchd.rt_flush_period }}
+    {% endif %}
+
+    {% if searchd.thread_stack is defined -%}
+	# per-thread stack size, only affects workers=threads mode
+	# optional, default is 64K
+	#
+	thread_stack			= {{ searchd.thread_stack }}
+    {% endif %}
+
+    {% if searchd.expansion_limit is defined -%}
+	# per-keyword expansion limit (for dict=keywords prefix searches)
+	# optional, default is 0 (no limit)
+	#
+	expansion_limit		= {{ searchd.expansion_limit }}
+    {% endif %}
+
+    {% if searchd.watchdog is defined -%}
+	# threaded server watchdog (only used in workers=threads mode)
+	# optional, values are 0 and 1, default is 1 (watchdog on)
+	#
+	watchdog				= {{ searchd.watchdog }}
+    {% endif %}
+
+    {% if searchd.prefork_rotation_throttle is defined -%}
+	# delay between preforked children restarts on rotation, in milliseconds
+	# optional, default is 0 (no delay)
+	#
+	prefork_rotation_throttle	= {{ searchd.prefork_rotation_throttle }}
+    {% endif %}
+
+    {% if searchd.sphinxql_state is defined -%}
+	# current SphinxQL state (uservars etc) serialization path
+	# optional, default is none (do not serialize SphinxQL state)
+	#
+	sphinxql_state			= {{ searchd.sphinxql_state }}
+    {% endif %}
+
+    {% if searchd.ha_ping_interval is defined -%}
+	# interval between agent mirror pings, in milliseconds
+	# 0 means disable pings
+	# optional, default is 1000
+	#
+	ha_ping_interval		= {{ searchd.ha_ping_interval }}
+    {% endif %}
+
+    {% if searchd.ha_period_karma is defined -%}
+	# agent mirror statistics window size, in seconds
+	# stats older than the window size (karma) are retired
+	# that is, they will not affect master choice of agents in any way
+	# optional, default is 60 seconds
+	#
+	ha_period_karma			= {{ searchd.ha_period_karma }}
+    {% endif %}
+
+    {% if searchd.persistent_connections_limit is defined -%}
+	# maximum amount of persistent connections from this master to each agent host
+	# optional, but necessary if you use agent_persistent. It is reasonable to set the value
+	# as max_children, or less on the agent's hosts.
+	persistent_connections_limit	= {{ searchd.persistent_connections_limit }}
+    {% endif %}
+
+    {% if (searchd.rt_merge_iops is defined) or
+          (searchd.rt_merge_maxiosize is defined) -%}
+	# maximum RT merge thread IO calls per second, and per-call IO size
+	# useful for throttling (the background) OPTIMIZE INDEX impact
+	# optional, default is 0 (unlimited)
+	#
+    {% endif -%}
+    {% if searchd.rt_merge_iops is defined -%}
+	rt_merge_iops			= {{ searchd.rt_merge_iops }}
+    {% endif -%}
+    {% if searchd.rt_merge_maxiosize is defined -%}
+	rt_merge_maxiosize		= {{ searchd.rt_merge_maxiosize }}
+    {% endif %}
+
+    {% if searchd.predicted_time_costs is defined -%}
+	# costs for max_predicted_time model, in (imaginary) nanoseconds
+	# optional, default is "doc=64, hit=48, skip=2048, match=64"
+	#
+	predicted_time_costs	= {{ searchd.predicted_time_costs }}
+    {% endif %}
+
+    {% if searchd.shutdown_timeout is defined -%}
+    # searchd --stopwait wait time, in seconds
+    # optional, default is 3 seconds
+    #
+    shutdown_timeout	= {{ searchd.shutdown_timeout }}
+    {% endif %}
+
+    {% if searchd.ondisk_attrs_default is defined -%}
+    # instance-wide defaults for ondisk_attrs directive
+    # default is 0 (all attributes are loaded in memory)
+    #
+    ondisk_attrs_default	= {{ searchd.ondisk_attrs_default }}
+    {% endif %}
+
+    {% if searchd.agent_connect_timeout is defined -%}
+    # instance-wide defaults for agent_connect_timeout parameter
+    # the last defined in distributed (network) indexes
+    #
+    agent_connect_timeout	= {{ searchd.agent_connect_timeout }}
+    {% endif %}
+
+    {% if searchd.agent_query_timeout is defined -%}
+    # instance-wide defaults for agent_query_timeout parameter
+    # the last defined in distributed (network) indexes
+    # or also may be overrided per-query using OPTION clause
+    #
+    agent_query_timeout	= {{ searchd.agent_query_timeout }}
+    {% endif %}
+
+    {% if searchd.agent_retry_count is defined -%}
+    # integer, specifies how many times sphinx will try to connect
+    # and query remote agents in distributed index before reporting fatal query error
+    # default is 0 (i.e. no retries)e
+    #
+    agent_retry_count	= {{ searchd.agent_retry_count }}
+    {% endif %}
+
+    {% if searchd.agent_retry_delay is defined -%}
+    # integer, in milliseconds
+    # specifies the delay sphinx rest before retrying to query a remote agent in case it fails
+    # default is 500
+    #
+    agent_retry_delay	= {{ searchd.agent_retry_delay }}
+    {% endif %}
+}
+
+#############################################################################
+## common settings
+#############################################################################
+
+common
+{
+
+    {% if common.lemmatizer_base is defined -%}
+    # lemmatizer dictionaries base path
+    # optional, defaut is /usr/local/share (see ./configure --datadir)
+    #
+    lemmatizer_base = {{ common.lemmatizer_base }}
+    {% endif %}
+
+    {% if common.on_json_attr_error is defined -%}
+	# how to handle syntax errors in JSON attributes
+	# known values are 'ignore_attr' and 'fail_index'
+	# optional, default is 'ignore_attr'
+	#
+	on_json_attr_error = {{ common.on_json_attr_error }}
+    {% endif %}
+
+    {% if common.json_autoconv_numbers is defined -%}
+	# whether to auto-convert numeric values from strings in JSON attributes
+	# with auto-conversion, string value with actually numeric data
+	# (as in {"key":"12345"}) gets stored as a number, rather than string
+	# optional, allowed values are 0 and 1, default is 0 (do not convert)
+	#
+	json_autoconv_numbers = {{ common.json_autoconv_numbers }}
+    {% endif %}
+
+    {% if common.json_autoconv_keynames is defined -%}
+	# whether and how to auto-convert key names in JSON attributes
+	# known value is 'lowercase'
+	# optional, default is unspecified (do nothing)
+	#
+	json_autoconv_keynames = {{ common.json_autoconv_keynames }}
+    {% endif %}
+
+    {% if common.rlp_root is defined -%}
+	# path to RLP root directory
+	# optional, defaut is /usr/local/share (see ./configure --datadir)
+	#
+	rlp_root = {{ common.rlp_root }}
+    {% endif %}
+
+    {% if common.rlp_environment is defined -%}
+	# path to RLP environment file
+	# optional, defaut is /usr/local/share/rlp-environment.xml (see ./configure --datadir)
+	#
+	rlp_environment = {{ common.rlp_environment }}
+    {% endif %}
+
+    {% if common.rlp_max_batch_size is defined -%}
+	# maximum total size of documents batched before processing them by the RLP
+	# optional, default is 51200
+	#
+	rlp_max_batch_size = {{ common.rlp_max_batch_size }}
+    {% endif %}
+
+    {% if common.rlp_max_batch_docs is defined -%}
+	# maximum number of documents batched before processing them by the RLP
+	# optional, default is 50
+	#
+	rlp_max_batch_docs = {{ common.rlp_max_batch_docs }}
+    {% endif %}
+
+    {% if common.plugin_dir is defined -%}
+	# trusted plugin directory
+	# optional, default is empty (disable UDFs)
+	#
+	plugin_dir			= {{ common.plugin_dir }}
+    {% endif %}
+
+}
+
+# --eof--

@@ -1,0 +1,10 @@
+---
+# tasks file for sphinx-config
+- name: Generating sphinx.conf Config
+  template:
+    src: "sphinx.conf.j2"
+    dest: "{{ output_file_path }}sphinx.conf"
+    owner: "{{ ansible_user_id }}"
+    group: "{{ ansible_user_id }}"
+    mode: "u=rw,g=,o="
+  become: true

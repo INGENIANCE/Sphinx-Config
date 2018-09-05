@@ -1,0 +1,10 @@
+---
+# defaults file for sphinx-config
+output_file_path: ''
+sources: []
+inherited_sources: []
+indices: []
+inherited_indices: []
+indexer:
+searchd:
+common:
